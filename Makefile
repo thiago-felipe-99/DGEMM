@@ -14,8 +14,15 @@ dgemm_simple:
 	./out/dgemm_simple 512
 	./out/dgemm_simple 1024
 	./out/dgemm_simple 2048
-	./out/dgemm_simple 4096
-	./out/dgemm_simple 8192
+
+dgemm_avx256:
+	gcc -mavx2 -o out/dgemm_avx256 dgemm_avx256.c
+	./out/dgemm_avx256 128
+	./out/dgemm_avx256 256
+	./out/dgemm_avx256 512
+	./out/dgemm_avx256 1024
+	./out/dgemm_avx256 2048
+	# ./out/dgemm_avx256 4096
 
 clean:
 	rm -r ./out/*
