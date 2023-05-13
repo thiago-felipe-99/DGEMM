@@ -8,7 +8,7 @@ python:
 	python main.py 1024
 
 dgemm_simple:
-	gcc -o out/dgemm_simple dgemm_simple.c
+	gcc -O3 -o out/dgemm_simple dgemm_simple.c
 	./out/dgemm_simple 128
 	./out/dgemm_simple 256
 	./out/dgemm_simple 512
@@ -16,7 +16,7 @@ dgemm_simple:
 	./out/dgemm_simple 2048
 
 dgemm_avx256:
-	gcc -mavx2 -o out/dgemm_avx256 dgemm_avx256.c
+	gcc -O3 -mavx2 -o out/dgemm_avx256 dgemm_avx256.c
 	./out/dgemm_avx256 128
 	./out/dgemm_avx256 256
 	./out/dgemm_avx256 512
@@ -25,7 +25,7 @@ dgemm_avx256:
 	# ./out/dgemm_avx256 4096
 
 dgemm_avx512:
-	gcc -mavx512f -o out/dgemm_avx512 dgemm_avx512.c
+	gcc -O3 -mavx512f -o out/dgemm_avx512 dgemm_avx512.c
 	./out/dgemm_avx512 128
 	./out/dgemm_avx512 256
 	./out/dgemm_avx512 512
