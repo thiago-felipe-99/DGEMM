@@ -27,12 +27,12 @@ def multiply_matrix(matrix_a, matrix_b, lenght):
 
 
 def main():
-    matrix_lenght = get_matrix_lenght()
-    matrix_a, matrix_b = generate_matrix(matrix_lenght)
+    lenght = get_matrix_lenght()
+    matrix_a, matrix_b = generate_matrix(lenght)
     init = time.perf_counter()
-    _ = multiply_matrix(matrix_a, matrix_b, matrix_lenght)
+    _ = multiply_matrix(matrix_a, matrix_b, lenght)
     final = time.perf_counter()
-    print(f"Time to calculate matrix: {final - init:0.4f}s")
+    print(f"Time to calculate matrix {lenght}x{lenght}: {final - init:0.4f}s")
 
 
 if __name__ == "__main__":
