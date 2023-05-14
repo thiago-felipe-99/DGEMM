@@ -1,3 +1,4 @@
+#include "debug.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -8,16 +9,6 @@
 #define EXIT_FAILURE 1
 
 const double range = 4096;
-
-void printMatrix(int length, double *matrix) {
-  for (int i = 0; i < length; i++) {
-    printf("|");
-    for (int j = 0; j < length; j++) {
-      printf("%5.0f ", matrix[i + j * length]);
-    }
-    printf("|\n");
-  }
-}
 
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
@@ -93,7 +84,7 @@ int main(int argc, char *argv[]) {
   multiplyMatrix(length, matrixA, matrixB, matrixC);
   diff = clock() - start;
 
-  if (length <= 127)
+  if (length <= MAX_PRINT_LINE)
     printMatrix(length, matrixC);
 
   int mseconds = diff * 1000 / CLOCKS_PER_SEC;

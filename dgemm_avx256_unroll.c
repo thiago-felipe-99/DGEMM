@@ -1,3 +1,4 @@
+#include "debug.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -96,6 +97,9 @@ int main(int argc, char *argv[]) {
   clock_t start = clock(), diff;
   multiplyMatrix(length, matrixA, matrixB, matrixC);
   diff = clock() - start;
+
+  if (length < MAX_PRINT_LINE)
+    printMatrix(length, matrixC);
 
   int mseconds = diff * 1000 / CLOCKS_PER_SEC;
   printf("Time to calculate matrix %dx%d: %dms\n", length, length, mseconds);
