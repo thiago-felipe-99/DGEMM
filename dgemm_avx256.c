@@ -24,20 +24,53 @@ void printMatrix(int length, double *matrix) {
   }
 }
 
+void smallMatrix(int length, double *matrixA, double *matrixB,
+                 double *matrixC) {
+  for (int i = 0; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + i * length] +=
+            matrixB[j + k * length] * matrixA[k + i * length];
+      }
+    }
+  }
+}
+
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length; j += AVX_QT_DOUBLE) {
+  if (length < AVX_QT_DOUBLE) {
+    smallMatrix(length, matrixA, matrixB, matrixC);
+    return;
+  }
+
+  int i = 0;
+  for (i = 0; i < length; i++) {
+    int j = 0;
+    for (j = 0; j < length; j += AVX_QT_DOUBLE) {
       __m256d acc = _mm256_load_pd(matrixC + i * length + j);
 
       for (int k = 0; k < length; k++) {
-        __m256d row = _mm256_broadcast_sd(matrixA + length * i + k);
+        __m256d row = _mm256_broadcast_sd(matrixA + i * length + k);
         __m256d column = _mm256_load_pd(matrixB + k * length + j);
         __m256d mul = _mm256_mul_pd(row, column);
         acc = _mm256_add_pd(acc, mul);
       }
 
       _mm256_store_pd(matrixC + i * length + j, acc);
+    }
+    for (; j < length; j++) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + i * length] +=
+            matrixB[j + k * length] * matrixA[k + i * length];
+      }
+    }
+  }
+  for (; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + i * length] +=
+            matrixB[j + k * length] * matrixA[k + i * length];
+      }
     }
   }
 }
@@ -97,7 +130,7 @@ int main(int argc, char *argv[]) {
   multiplyMatrix(length, matrixA, matrixB, matrixC);
   diff = clock() - start;
 
-  if (length <= 10)
+  if (length <= 127)
     printMatrix(length, matrixC);
 
   int mseconds = diff * 1000 / CLOCKS_PER_SEC;
