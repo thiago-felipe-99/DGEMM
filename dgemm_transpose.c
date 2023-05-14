@@ -21,14 +21,24 @@ void printMatrix(int length, double *matrix) {
 
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
+  double *temp = malloc(length * length * sizeof(double));
+
+  for (int i = 0; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
+      temp[i + j * length] = matrixB[j + i * length];
+    }
+  }
+
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
       for (int k = 0; k < length; k++) {
-        matrixC[i + j * length] +=
-            matrixB[k + j * length] * matrixA[i + k * length];
+        matrixC[j + i * length] +=
+            temp[k + j * length] * matrixA[k + i * length];
       }
     }
   }
+
+  free(temp);
 }
 
 int getMatrixLength(int argc, char *argv[]) {

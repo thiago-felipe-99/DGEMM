@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <immintrin.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,21 +14,30 @@
 
 const double range = 4096;
 
+void printMatrix(int length, double *matrix) {
+  for (int i = 0; i < length; i++) {
+    printf("|");
+    for (int j = 0; j < length; j++) {
+      printf("%5.0f ", matrix[i + j * length]);
+    }
+    printf("|\n");
+  }
+}
+
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < length; i += AVX_QT_DOUBLE) {
-    for (int j = 0; j < length; j++) {
-      // cij = C[i][j]
-      __m256d c0 = _mm256_load_pd(matrixC + i + j * length);
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; j += AVX_QT_DOUBLE) {
+      __m256d acc = _mm256_load_pd(matrixC + i * length + j);
 
       for (int k = 0; k < length; k++) {
-        // cij += A[i][k]*B[k][j]
-        c0 = _mm256_add_pd(
-            c0, _mm256_mul_pd(_mm256_load_pd(matrixA + i + k * length),
-                              _mm256_broadcast_sd(matrixB + k + j * length)));
+        __m256d row = _mm256_broadcast_sd(matrixA + length * i + k);
+        __m256d column = _mm256_load_pd(matrixB + k * length + j);
+        __m256d mul = _mm256_mul_pd(row, column);
+        acc = _mm256_add_pd(acc, mul);
       }
 
-      _mm256_store_pd(matrixC + i + j * length, c0);
+      _mm256_store_pd(matrixC + i * length + j, acc);
     }
   }
 }
@@ -65,8 +75,8 @@ void generateRandonsMatrix(int length, double *matrixA, double *matrixB,
   srand(time(NULL));
 
   for (int index = 0; index < length * length; index++) {
-    matrixA[index] = ((double)rand() / RAND_MAX) * range;
-    matrixB[index] = ((double)rand() / RAND_MAX) * range;
+    matrixA[index] = index;
+    matrixB[index] = index;
     matrixC[index] = 0;
   }
 }
@@ -86,6 +96,9 @@ int main(int argc, char *argv[]) {
   clock_t start = clock(), diff;
   multiplyMatrix(length, matrixA, matrixB, matrixC);
   diff = clock() - start;
+
+  if (length <= 10)
+    printMatrix(length, matrixC);
 
   int mseconds = diff * 1000 / CLOCKS_PER_SEC;
   printf("Time to calculate matrix %dx%d: %dms\n", length, length, mseconds);

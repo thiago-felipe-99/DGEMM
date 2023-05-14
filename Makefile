@@ -17,6 +17,11 @@ dgemm_simple: prepare
 	gcc -O3 -o out/dgemm_simple dgemm_simple.c
 	./exec.sh ./out/dgemm_simple
 
+.PHONY: dgemm_transpose
+dgemm_transpose: prepare
+	gcc -O3 -o out/dgemm_transpose dgemm_transpose.c
+	./exec.sh ./out/dgemm_transpose
+
 .PHONY: dgemm_avx256
 dgemm_avx256: prepare
 	gcc -O3 -mavx2 -o out/dgemm_avx256 dgemm_avx256.c
