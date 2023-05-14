@@ -1,6 +1,7 @@
 #include "debug.h"
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,8 +93,10 @@ int main(int argc, char *argv[]) {
   if (length < MAX_PRINT_LINE)
     printMatrix(length, matrixC);
 
-  int mseconds = diff * 1000 / CLOCKS_PER_SEC;
-  printf("Time to calculate matrix %dx%d: %dms\n", length, length, mseconds);
+  double seconds = ((double)diff) / CLOCKS_PER_SEC;
+  double mseconds = seconds * 1000;
+  double gflops = ((2 * pow(length, 3)) / pow(10, 9));
+  printf("%d, %.0fms, %.2fGFLOPS/second\n", length, mseconds, gflops / seconds);
 
   free(matrixA);
   free(matrixB);
