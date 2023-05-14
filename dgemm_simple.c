@@ -9,19 +9,19 @@
 
 const double range = 4096;
 
-void multiplyMatrix(int lenght, double *matrixA, double *matrixB,
+void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < lenght; ++i) {
-    for (int j = 0; j < lenght; ++j) {
+  for (int i = 0; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
       // cij = C[i][j]
-      double cij = matrixC[i + j * lenght];
+      double cij = matrixC[i + j * length];
 
-      for (int k = 0; k < lenght; k++) {
+      for (int k = 0; k < length; k++) {
         // cij += A[i][k]*B[k][j]
-        cij += matrixA[i + k * lenght] * matrixB[k + j * lenght];
+        cij += matrixA[i + k * length] * matrixB[k + j * length];
       }
 
-      matrixC[i + j * lenght] = cij;
+      matrixC[i + j * length] = cij;
     }
   }
 }

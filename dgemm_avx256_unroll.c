@@ -13,27 +13,27 @@
 
 const double range = 4096;
 
-void multiplyMatrix(int lenght, double *matrixA, double *matrixB,
+void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < lenght; i += AVX_QT_DOUBLE * UNROLL) {
-    for (int j = 0; j < lenght; j++) {
+  for (int i = 0; i < length; i += AVX_QT_DOUBLE * UNROLL) {
+    for (int j = 0; j < length; j++) {
       __m256d c[UNROLL];
 
       for (int r = 0; r < UNROLL; r++)
-        c[r] = _mm256_load_pd(matrixC + i + j * lenght + r * AVX_QT_DOUBLE);
+        c[r] = _mm256_load_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE);
 
-      for (int k = 0; k < lenght; k++) {
-        __m256d bb = _mm256_broadcast_sd(matrixB + k + j * lenght);
+      for (int k = 0; k < length; k++) {
+        __m256d bb = _mm256_broadcast_sd(matrixB + k + j * length);
 
         for (int r = 0; r < UNROLL; r++)
           c[r] = _mm256_add_pd(
-              c[r], _mm256_mul_pd(_mm256_load_pd(matrixA + i + k * lenght +
+              c[r], _mm256_mul_pd(_mm256_load_pd(matrixA + i + k * length +
                                                  r * AVX_QT_DOUBLE),
                                   bb));
       }
 
       for (int r = 0; r < UNROLL; r++)
-        _mm256_store_pd(matrixC + i + j * lenght + r * AVX_QT_DOUBLE, c[r]);
+        _mm256_store_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE, c[r]);
     }
   }
 }

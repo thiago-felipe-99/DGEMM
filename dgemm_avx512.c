@@ -13,22 +13,22 @@
 
 const double range = 4096;
 
-void multiplyMatrix(int lenght, double *matrixA, double *matrixB,
+void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < lenght; i += AVX_QT_DOUBLE) {
-    for (int j = 0; j < lenght; j++) {
+  for (int i = 0; i < length; i += AVX_QT_DOUBLE) {
+    for (int j = 0; j < length; j++) {
       // cij = C[i][j]
-      __m512d c0 = _mm512_load_pd(matrixC + i + j * lenght);
+      __m512d c0 = _mm512_load_pd(matrixC + i + j * length);
 
-      for (int k = 0; k < lenght; k++) {
+      for (int k = 0; k < length; k++) {
         // cij += A[i][k]*B[k][j]
         c0 = _mm512_add_pd(
-            c0, _mm512_mul_pd(_mm512_load_pd(matrixA + i + k * lenght),
+            c0, _mm512_mul_pd(_mm512_load_pd(matrixA + i + k * length),
                               _mm512_broadcastsd_pd(
-                                  _mm_load_sd(matrixB + k + j * lenght))));
+                                  _mm_load_sd(matrixB + k + j * length))));
       }
 
-      _mm512_store_pd(matrixC + i + j * lenght, c0);
+      _mm512_store_pd(matrixC + i + j * length, c0);
     }
   }
 }
