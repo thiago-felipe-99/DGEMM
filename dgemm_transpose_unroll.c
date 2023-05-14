@@ -7,6 +7,10 @@
 
 #define EXIT_FAILURE 1
 
+#ifndef UNROLL
+#define UNROLL 16
+#endif
+
 const double range = 4096;
 
 void printMatrix(int length, double *matrix) {
@@ -19,8 +23,8 @@ void printMatrix(int length, double *matrix) {
   }
 }
 
-void multiplyMatrix(int length, double *matrixA, double *matrixB,
-                    double *matrixC) {
+void smallMatrix(int length, double *matrixA, double *matrixB,
+                 double *matrixC) {
   double *temp = malloc(length * length * sizeof(double));
 
   for (int i = 0; i < length; ++i) {
@@ -31,6 +35,43 @@ void multiplyMatrix(int length, double *matrixA, double *matrixB,
 
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + i * length] +=
+            temp[k + j * length] * matrixA[k + i * length];
+      }
+    }
+  }
+
+  free(temp);
+}
+
+void multiplyMatrix(int length, double *matrixA, double *matrixB,
+                    double *matrixC) {
+
+  if (length < UNROLL) {
+    smallMatrix(length, matrixA, matrixB, matrixC);
+    return;
+  }
+
+  double *temp = malloc(length * length * sizeof(double));
+
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; ++j) {
+      temp[i + j * length] = matrixB[j + i * length];
+    }
+  }
+
+  for (int i = 0; i < length; i++) {
+    int j = 0;
+    for (j = 0; j < length - UNROLL; j += UNROLL) {
+      for (int k = 0; k < length; k++) {
+        for (int r = 0; r < UNROLL; r++) {
+          matrixC[j + r + i * length] +=
+              temp[k + (r + j) * length] * matrixA[k + i * length];
+        }
+      }
+    }
+    for (; j < length; j++) {
       for (int k = 0; k < length; k++) {
         matrixC[j + i * length] +=
             temp[k + j * length] * matrixA[k + i * length];

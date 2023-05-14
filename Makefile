@@ -55,6 +55,34 @@ dgemm_avx256_unroll_32: prepare
 .PHONY: dgemm_avx256_unroll
 dgemm_avx256_unroll: dgemm_avx256_unroll_2 dgemm_avx256_unroll_4 dgemm_avx256_unroll_8 dgemm_avx256_unroll_16 dgemm_avx256_unroll_32
 
+.PHONY: dgemm_transpose_unroll_2
+dgemm_transpose_unroll_2: prepare
+	gcc -O3 -mavx2 -DUNROLL=2 -o out/dgemm_transpose_unroll_2 dgemm_transpose_unroll.c
+	./exec.sh ./out/dgemm_transpose_unroll_2
+
+.PHONY: dgemm_transpose_unroll_4
+dgemm_transpose_unroll_4: prepare
+	gcc -O3 -mavx2 -DUNROLL=4 -o out/dgemm_transpose_unroll_4 dgemm_transpose_unroll.c
+	./exec.sh ./out/dgemm_transpose_unroll_4
+
+.PHONY: dgemm_transpose_unroll_8
+dgemm_transpose_unroll_8: prepare
+	gcc -O3 -mavx2 -DUNROLL=8 -o out/dgemm_transpose_unroll_8 dgemm_transpose_unroll.c
+	./exec.sh ./out/dgemm_transpose_unroll_8
+
+.PHONY: dgemm_transpose_unroll_16
+dgemm_transpose_unroll_16: prepare
+	gcc -O3 -mavx2 -DUNROLL=16 -o out/dgemm_transpose_unroll_16 dgemm_transpose_unroll.c
+	./exec.sh ./out/dgemm_transpose_unroll_16
+
+.PHONY: dgemm_transpose_unroll_32
+dgemm_transpose_unroll_32: prepare
+	gcc -O3 -mavx2 -DUNROLL=32 -o out/dgemm_transpose_unroll_32 dgemm_transpose_unroll.c
+	./exec.sh ./out/dgemm_transpose_unroll_32
+
+.PHONY: dgemm_transpose_unroll
+dgemm_transpose_unroll: dgemm_transpose_unroll_2 dgemm_transpose_unroll_4 dgemm_transpose_unroll_8 dgemm_transpose_unroll_16 dgemm_transpose_unroll_32
+
 .PHONY: dgemm_avx512
 dgemm_avx512: prepare
 	gcc -O3 -mavx512f -o out/dgemm_avx512 dgemm_avx512.c
