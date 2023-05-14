@@ -11,6 +11,10 @@
 #define AVX_QT_DOUBLE 4
 #define AVX_SIZE_DOUBLE 32
 
+#ifndef UNROLL
+#define UNROLL 16
+#endif
+
 const double range = 4096;
 
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
