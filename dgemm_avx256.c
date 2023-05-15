@@ -28,6 +28,24 @@ void smallMatrix(int length, double *matrixA, double *matrixB,
   }
 }
 
+void multiplyAVX(int newLength, double *matrixA, double *matrixB,
+                    double *matrixC) {
+  for (int i = 0; i < newLength; i++) {
+    for (int j = 0; j < newLength; j += AVX_QT_DOUBLE) {
+      __m256d acc = _mm256_load_pd(matrixC + i * newLength + j);
+
+      for (int k = 0; k < newLength; k++) {
+        __m256d row = _mm256_broadcast_sd(matrixA + i * newLength + k);
+        __m256d column = _mm256_load_pd(matrixB + k * newLength + j);
+        __m256d mul = _mm256_mul_pd(row, column);
+        acc = _mm256_add_pd(acc, mul);
+      }
+
+      _mm256_store_pd(matrixC + i * newLength + j, acc);
+    }
+  }
+}
+
 void multiplyMatrix(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
   if (length < AVX_QT_DOUBLE) {
@@ -35,38 +53,67 @@ void multiplyMatrix(int length, double *matrixA, double *matrixB,
     return;
   }
 
-  int i = 0;
-  for (i = 0; i < length; i++) {
-    int j = 0;
-    for (j = 0; j < length; j += AVX_QT_DOUBLE) {
-      __m256d acc = _mm256_load_pd(matrixC + i * length + j);
+  //criando matrizes que tenha tamanhos fatores de AVX_QT_DOUBLE
+  //isso é necessário para multiplyAVX funcionar, porém se a matriz 
+  //tiver tamanho % AVX_QT_DOUBLE != 0 irá o consumir o triplo de memória
+  int newLength;
+  double *A, *B, *C;
+  if (length % AVX_QT_DOUBLE) {
+    newLength = length - length % AVX_QT_DOUBLE + AVX_QT_DOUBLE;
+    A = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
+    B = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
+    C = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
 
-      for (int k = 0; k < length; k++) {
-        __m256d row = _mm256_broadcast_sd(matrixA + i * length + k);
-        __m256d column = _mm256_load_pd(matrixB + k * length + j);
-        __m256d mul = _mm256_mul_pd(row, column);
-        acc = _mm256_add_pd(acc, mul);
+    int i = 0;
+    for (; i < length; i++) {
+      int j = 0;
+      int io = i * length;
+      int in = i * newLength;
+      for (; j < length; j++) {
+        A[j + in] = matrixA[j + io];
+        B[j + in] = matrixB[j + io];
+        C[j + in] = 0;
       }
-
-      _mm256_store_pd(matrixC + i * length + j, acc);
-    }
-    for (; j < length; j++) {
-      for (int k = 0; k < length; k++) {
-        matrixC[j + i * length] +=
-            matrixB[j + k * length] * matrixA[k + i * length];
+      for (; j < newLength; j++) {
+        A[j + in] = 0;
+        B[j + in] = 0;
+        C[j + in] = 0;
       }
     }
+    for (; i < newLength; i++) {
+      int in = i * newLength;
+      for (int j = 0; j < newLength; j++) {
+        A[j + in] = 0;
+        B[j + in] = 0;
+        C[j + in] = 0;
+      }
+    }
+  } else {
+    newLength = length;
+    A = matrixA;
+    B = matrixB;
+    C = matrixC;
   }
-  for (; i < length; ++i) {
-    for (int j = 0; j < length; ++j) {
-      for (int k = 0; k < length; k++) {
-        matrixC[j + i * length] +=
-            matrixB[j + k * length] * matrixA[k + i * length];
+
+  multiplyAVX(newLength, A, B, C);
+
+  // garatindo que matrixC tenha a resposta de C e libernado memória de A, B, C
+  if (length % AVX_QT_DOUBLE) {
+    int i = 0;
+    for (; i < length; i++) {
+      int j = 0;
+      int io = i * length;
+      int in = i * newLength;
+      for (; j < length; j++) {
+        matrixC[j + io] = C[j + in];
       }
     }
+
+    free(A);
+    free(B);
+    free(C);
   }
 }
-
 int getMatrixLength(int argc, char *argv[]) {
   int length;
   char *endptr;
