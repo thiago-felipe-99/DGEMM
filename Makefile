@@ -1,5 +1,5 @@
 .PHONY: all
-all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx256 dgemm_avx256_unroll 
+all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx256 dgemm_avx256_unroll dgemm_avx256_unroll_blocking
 
 .PHONY prepare:
 prepare:
@@ -72,6 +72,29 @@ dgemm_avx256_unroll_32: prepare
 
 .PHONY: dgemm_avx256_unroll
 dgemm_avx256_unroll: dgemm_avx256_unroll_2 dgemm_avx256_unroll_4 dgemm_avx256_unroll_8 dgemm_avx256_unroll_16 dgemm_avx256_unroll_32
+
+.PHONY: dgemm_avx256_unroll_blocking_32
+dgemm_avx256_unroll_blocking_32: prepare
+	gcc -O3 -lm -mavx2 -DUNROLL=8 -DBLOCK_SIZE=32 -o out/dgemm_avx256_unroll_blocking_32 dgemm_avx256_unroll_blocking.c debug.c
+
+.PHONY: dgemm_avx256_unroll_blocking_64
+dgemm_avx256_unroll_blocking_64: prepare
+	gcc -O3 -lm -mavx2 -DUNROLL=8 -DBLOCK_SIZE=64 -o out/dgemm_avx256_unroll_blocking_64 dgemm_avx256_unroll_blocking.c debug.c
+
+.PHONY: dgemm_avx256_unroll_blocking_128
+dgemm_avx256_unroll_blocking_128: prepare
+	gcc -O3 -lm -mavx2 -DUNROLL=8 -DBLOCK_SIZE=128 -o out/dgemm_avx256_unroll_blocking_128 dgemm_avx256_unroll_blocking.c debug.c
+
+.PHONY: dgemm_avx256_unroll_blocking_256
+dgemm_avx256_unroll_blocking_256: prepare
+	gcc -O3 -lm -mavx2 -DUNROLL=8 -DBLOCK_SIZE=256 -o out/dgemm_avx256_unroll_blocking_256 dgemm_avx256_unroll_blocking.c debug.c
+
+.PHONY: dgemm_avx256_unroll_blocking_512
+dgemm_avx256_unroll_blocking_512: prepare
+	gcc -O3 -lm -mavx2 -DUNROLL=8 -DBLOCK_SIZE=512 -o out/dgemm_avx256_unroll_blocking_512 dgemm_avx256_unroll_blocking.c debug.c
+
+.PHONY: dgemm_avx256_unroll_blocking
+dgemm_avx256_unroll_blocking: dgemm_avx256_unroll_blocking_32 dgemm_avx256_unroll_blocking_64 dgemm_avx256_unroll_blocking_128 dgemm_avx256_unroll_blocking_256 dgemm_avx256_unroll_blocking_512
 
 .PHONY: dgemm_avx512
 dgemm_avx512: prepare
