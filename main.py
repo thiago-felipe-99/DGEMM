@@ -32,7 +32,9 @@ def main():
     init = time.perf_counter()
     _ = multiply_matrix(matrix_a, matrix_b, length)
     final = time.perf_counter()
-    print(f"Time to calculate matrix {length}x{length}: {final - init:0.4f}s")
+    diff = final - init
+    gflops = ((2*pow(length, 3))/pow(10, 9))
+    print(f"{length}, {diff*1000:.0f}ms, {gflops/diff:.2f}GFLOPS/second")
 
 
 if __name__ == "__main__":
