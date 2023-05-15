@@ -29,19 +29,19 @@ void smallMatrix(int length, double *matrixA, double *matrixB,
 }
 
 void multiplyAVX(int length, double *matrixA, double *matrixB,
-                    double *matrixC) {
-  for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length; j += AVX_QT_DOUBLE) {
-      __m256d acc = _mm256_load_pd(matrixC + i * length + j);
+                 double *matrixC) {
+  for (int i = 0; i < length; i += AVX_QT_DOUBLE) {
+    for (int j = 0; j < length; j++) {
+      __m256d acc = _mm256_load_pd(matrixC + j * length + i);
 
       for (int k = 0; k < length; k++) {
-        __m256d row = _mm256_broadcast_sd(matrixA + i * length + k);
-        __m256d column = _mm256_load_pd(matrixB + k * length + j);
-        __m256d mul = _mm256_mul_pd(row, column);
+        __m256d column = _mm256_broadcast_sd(matrixB + j * length + k);
+        __m256d row = _mm256_load_pd(matrixA + k * length + i);
+        __m256d mul = _mm256_mul_pd(column, row);
         acc = _mm256_add_pd(acc, mul);
       }
 
-      _mm256_store_pd(matrixC + i * length + j, acc);
+      _mm256_store_pd(matrixC + j * length + i, acc);
     }
   }
 }
@@ -54,8 +54,8 @@ void multiplyMatrix(int length, double *matrixA, double *matrixB,
   }
 
   // criando matrizes que tenha fatores de tamanho igual a AVX_QT_DOUBLE
-  //isso é necessário para multiplyAVX funcionar, porém se a matriz 
-  //tiver tamanho % AVX_QT_DOUBLE != 0 irá o consumir o triplo de memória
+  // isso é necessário para multiplyAVX funcionar, porém se a matriz
+  // tiver tamanho % AVX_QT_DOUBLE != 0 irá o consumir o triplo de memória
   int newLength;
   double *A, *B, *C;
   if (length % AVX_QT_DOUBLE) {
