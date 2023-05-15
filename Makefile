@@ -1,5 +1,5 @@
 .PHONY: all
-all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx256 dgemm_avx256_unroll
+all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx_disable dgemm_avx256  dgemm_avx256_unroll
 
 .PHONY: prepare
 prepare:
@@ -22,9 +22,13 @@ dgemm_transpose_unroll:
 	gcc -O3 -mavx2 -DUNROLL=16 -o out/dgemm_transpose_unroll_16 src/dgemm_transpose_unroll.c src/debug.c -lm
 	gcc -O3 -mavx2 -DUNROLL=32 -o out/dgemm_transpose_unroll_32 src/dgemm_transpose_unroll.c src/debug.c -lm
 
+.PHONY: dgemm_avx_disable
+dgemm_avx_disable: prepare
+	gcc -O3 -o out/dgemm_avx_disable src/dgemm_avx.c src/debug.c -lm
+
 .PHONY: dgemm_avx256
 dgemm_avx256: prepare
-	gcc -O3 -mavx2 -o out/dgemm_avx256 src/dgemm_avx256.c src/debug.c -lm
+	gcc -O3 -mavx2 -o out/dgemm_avx256 src/dgemm_avx.c src/debug.c -lm
 
 .PHONY: dgemm_avx256_unroll
 dgemm_avx256_unroll: 
