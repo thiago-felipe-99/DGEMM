@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 for i in {1..10}; do
   echo Rounding $i
 	for file in "$1"/*; do
