@@ -92,14 +92,14 @@ void multiplyAVX(int length, double *matrixA, double *matrixB,
             temp[k + (2 + j) * length] * matrixA[k + i * length];
         matrixC[j + 3 + i * length] +=
             temp[k + (3 + j) * length] * matrixA[k + i * length];
-        /* matrixC[j + 4 + i * length] += */
-        /*     temp[k + (4 + j) * length] * matrixA[k + i * length]; */
-        /* matrixC[j + 5 + i * length] += */
-        /*     temp[k + (5 + j) * length] * matrixA[k + i * length]; */
-        /* matrixC[j + 6 + i * length] += */
-        /*     temp[k + (6 + j) * length] * matrixA[k + i * length]; */
-        /* matrixC[j + 7 + i * length] += */
-        /*     temp[k + (7 + j) * length] * matrixA[k + i * length]; */
+        matrixC[j + 4 + i * length] +=
+            temp[k + (4 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 5 + i * length] +=
+            temp[k + (5 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 6 + i * length] +=
+            temp[k + (6 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 7 + i * length] +=
+            temp[k + (7 + j) * length] * matrixA[k + i * length];
       }
     }
   }
