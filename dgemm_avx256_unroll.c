@@ -19,28 +19,138 @@
 
 const double range = 4096;
 
-void multiplyMatrix(int length, double *matrixA, double *matrixB,
-                    double *matrixC) {
-  for (int i = 0; i < length; i += AVX_QT_DOUBLE * UNROLL) {
+void smallMatrix(int length, double *matrixA, double *matrixB,
+                 double *matrixC) {
+  double *temp = malloc(length * length * sizeof(double));
+
+  for (int i = 0; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
+      temp[i + j * length] = matrixB[j + i * length];
+    }
+  }
+
+  for (int i = 0; i < length; ++i) {
+    for (int j = 0; j < length; ++j) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + i * length] +=
+            temp[k + j * length] * matrixA[k + i * length];
+      }
+    }
+  }
+
+  free(temp);
+}
+
+void multiplyAVXUnroll(int length, double *matrixA, double *matrixB,
+                       double *matrixC) {
+  int i = 0;
+  for (; i < length; i += UNROLL * AVX_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
-      __m256d c[UNROLL];
+      __m256d acc[UNROLL];
 
       for (int r = 0; r < UNROLL; r++)
-        c[r] = _mm256_load_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE);
+        acc[r] = _mm256_load_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE);
 
       for (int k = 0; k < length; k++) {
-        __m256d bb = _mm256_broadcast_sd(matrixB + k + j * length);
+        __m256d column = _mm256_broadcast_sd(matrixB + k + j * length);
 
-        for (int r = 0; r < UNROLL; r++)
-          c[r] = _mm256_add_pd(
-              c[r], _mm256_mul_pd(_mm256_load_pd(matrixA + i + k * length +
-                                                 r * AVX_QT_DOUBLE),
-                                  bb));
+        for (int r = 0; r < UNROLL; r++) {
+          __m256d row =
+              _mm256_load_pd(matrixA + k * length + i + r * AVX_QT_DOUBLE);
+          __m256d mul = _mm256_mul_pd(column, row);
+          acc[r] = _mm256_add_pd(acc[r], mul);
+        }
       }
 
       for (int r = 0; r < UNROLL; r++)
-        _mm256_store_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE, c[r]);
+        _mm256_store_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE, acc[r]);
     }
+  }
+  for (; i < length; i++) {
+    for (int j = 0; j < length; j += AVX_QT_DOUBLE) {
+      __m256d acc = _mm256_load_pd(matrixC + i * length + j);
+
+      for (int k = 0; k < length; k++) {
+        __m256d row = _mm256_broadcast_sd(matrixA + i * length + k);
+        __m256d column = _mm256_load_pd(matrixB + k * length + j);
+        __m256d mul = _mm256_mul_pd(row, column);
+        acc = _mm256_add_pd(acc, mul);
+      }
+
+      _mm256_store_pd(matrixC + i * length + j, acc);
+    }
+  }
+}
+
+void multiplyMatrix(int length, double *matrixA, double *matrixB,
+                    double *matrixC) {
+
+  if (length < UNROLL) {
+    smallMatrix(length, matrixA, matrixB, matrixC);
+    return;
+  }
+
+  // criando matrizes que tenha fatores de tamanho igual a AVX_QT_DOUBLE * UNROLL
+  // isso é necessário para multiplyAVXUnroll funcionar, porém se a matriz
+  // tiver tamanho % (AVX_QT_DOUBLE * UNROLL) != 0 irá o consumir o triplo de memória
+  int newLength;
+  double *A, *B, *C;
+  if (length % (AVX_QT_DOUBLE * UNROLL)) {
+    newLength =
+        length - length % (AVX_QT_DOUBLE * UNROLL) + AVX_QT_DOUBLE * UNROLL;
+    A = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
+    B = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
+    C = aligned_alloc(AVX_SIZE_DOUBLE, newLength * newLength * sizeof(double));
+
+    int i = 0;
+    for (; i < length; i++) {
+      int j = 0;
+      int io = i * length;
+      int in = i * newLength;
+      for (; j < length; j++) {
+        A[j + in] = matrixA[j + io];
+        B[j + in] = matrixB[j + io];
+        C[j + in] = 0;
+      }
+      for (; j < newLength; j++) {
+        A[j + in] = 0;
+        B[j + in] = 0;
+        C[j + in] = 0;
+      }
+    }
+    for (; i < newLength; i++) {
+      int in = i * newLength;
+      for (int j = 0; j < newLength; j++) {
+        A[j + in] = 0;
+        B[j + in] = 0;
+        C[j + in] = 0;
+      }
+    }
+  } else {
+    newLength = length;
+    A = matrixA;
+    B = matrixB;
+    C = matrixC;
+  }
+
+  multiplyAVXUnroll(newLength, A, B, C);
+
+  // garatindo que matrixC tenha a resposta de C e libernado memória de A, B,
+  // C
+  if (length % (AVX_QT_DOUBLE * UNROLL)) {
+    int i = 0;
+    for (; i < length; i++) {
+      int j = 0;
+      int io = i * length;
+      int in = i * newLength;
+      for (; j < length; j++) {
+        matrixC[j + io] = C[j + in];
+      }
+    }
+
+    free(A);
+    free(B);
+    free(C);
   }
 }
 
@@ -77,8 +187,8 @@ void generateRandonsMatrix(int length, double *matrixA, double *matrixB,
   srand(time(NULL));
 
   for (int index = 0; index < length * length; index++) {
-    matrixA[index] = ((double)rand() / RAND_MAX) * range;
-    matrixB[index] = ((double)rand() / RAND_MAX) * range;
+    matrixA[index] = index;
+    matrixB[index] = index;
     matrixC[index] = 0;
   }
 }

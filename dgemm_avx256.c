@@ -28,20 +28,20 @@ void smallMatrix(int length, double *matrixA, double *matrixB,
   }
 }
 
-void multiplyAVX(int newLength, double *matrixA, double *matrixB,
+void multiplyAVX(int length, double *matrixA, double *matrixB,
                     double *matrixC) {
-  for (int i = 0; i < newLength; i++) {
-    for (int j = 0; j < newLength; j += AVX_QT_DOUBLE) {
-      __m256d acc = _mm256_load_pd(matrixC + i * newLength + j);
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; j += AVX_QT_DOUBLE) {
+      __m256d acc = _mm256_load_pd(matrixC + i * length + j);
 
-      for (int k = 0; k < newLength; k++) {
-        __m256d row = _mm256_broadcast_sd(matrixA + i * newLength + k);
-        __m256d column = _mm256_load_pd(matrixB + k * newLength + j);
+      for (int k = 0; k < length; k++) {
+        __m256d row = _mm256_broadcast_sd(matrixA + i * length + k);
+        __m256d column = _mm256_load_pd(matrixB + k * length + j);
         __m256d mul = _mm256_mul_pd(row, column);
         acc = _mm256_add_pd(acc, mul);
       }
 
-      _mm256_store_pd(matrixC + i * newLength + j, acc);
+      _mm256_store_pd(matrixC + i * length + j, acc);
     }
   }
 }
@@ -53,7 +53,7 @@ void multiplyMatrix(int length, double *matrixA, double *matrixB,
     return;
   }
 
-  //criando matrizes que tenha tamanhos fatores de AVX_QT_DOUBLE
+  // criando matrizes que tenha fatores de tamanho igual a AVX_QT_DOUBLE
   //isso é necessário para multiplyAVX funcionar, porém se a matriz 
   //tiver tamanho % AVX_QT_DOUBLE != 0 irá o consumir o triplo de memória
   int newLength;
