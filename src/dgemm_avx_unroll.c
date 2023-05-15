@@ -10,11 +10,24 @@
 
 #define EXIT_FAILURE 1
 
-#define AVX_QT_DOUBLE 4
-#define AVX_SIZE_DOUBLE 32
-
 #ifndef UNROLL
 #define UNROLL 16
+#endif
+
+#ifndef AVX
+#ifdef __AVX512F__
+#define AVX 512
+#define AVX_QT_DOUBLE 8
+#define AVX_SIZE_DOUBLE 64
+#elif __AVX2__ || __AVX__
+#define AVX 256
+#define AVX_QT_DOUBLE 4
+#define AVX_SIZE_DOUBLE 32
+#else
+#define AVX 0
+#define AVX_QT_DOUBLE 8
+#define AVX_SIZE_DOUBLE 32
+#endif
 #endif
 
 const double range = 4096;
@@ -43,6 +56,7 @@ void smallMatrix(int length, double *matrixA, double *matrixB,
 
 void multiplyAVXUnroll(int length, double *matrixA, double *matrixB,
                        double *matrixC) {
+#if AVX == 256
   int i = 0;
   for (; i < length; i += UNROLL * AVX_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
@@ -80,6 +94,103 @@ void multiplyAVXUnroll(int length, double *matrixA, double *matrixB,
       _mm256_store_pd(matrixC + i * length + j, acc);
     }
   }
+#elif AVX == 512
+  int i = 0;
+  for (; i < length; i += UNROLL * AVX_QT_DOUBLE) {
+    for (int j = 0; j < length; j++) {
+      __m512d acc[UNROLL];
+
+      for (int r = 0; r < UNROLL; r++)
+        acc[r] = _mm512_load_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE);
+
+      for (int k = 0; k < length; k++) {
+        __m512d column =
+            _mm512_broadcast_pd(_mm_load_sd(matrixB + j * length + k));
+
+        for (int r = 0; r < UNROLL; r++) {
+          __m512d row =
+              _mm512_load_pd(matrixA + k * length + i + r * AVX_QT_DOUBLE);
+          __m512d mul = _mm512_mul_pd(column, row);
+          acc[r] = _mm512_add_pd(acc[r], mul);
+        }
+      }
+
+      for (int r = 0; r < UNROLL; r++)
+        _mm512_store_pd(matrixC + i + j * length + r * AVX_QT_DOUBLE, acc[r]);
+    }
+  }
+  for (; i < length; i += AVX_QT_DOUBLE) {
+    for (int j = 0; j < length; j++) {
+      __m512d acc = _mm512_load_pd(matrixC + j * length + i);
+      for (int k = 0; k < length; k++) {
+        __m512d column =
+            _mm512_broadcast_pd(_mm_load_sd(matrixB + j * length + k));
+        __m512d row = _mm512_load_pd(matrixA + k * length + i);
+        __m512d mul = _mm512_mul_pd(column, row);
+        acc = _mm512_add_pd(acc, mul);
+      }
+
+      _mm512_store_pd(matrixC + j * length + i, acc);
+    }
+  }
+#else
+  double *temp = malloc(length * length * sizeof(double));
+
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; ++j) {
+      temp[i + j * length] = matrixB[j + i * length];
+    }
+  }
+
+  for (int i = 0; i < length; i++) {
+    int j = 0;
+    for (j = 0; j < length - UNROLL * AVX_QT_DOUBLE;
+         j += UNROLL * AVX_QT_DOUBLE) {
+      for (int k = 0; k < length; k++) {
+        for (int r = 0; r < UNROLL; r++) {
+          matrixC[j + r + 0 + i * length] +=
+              temp[k + (0 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 1 + i * length] +=
+              temp[k + (1 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 2 + i * length] +=
+              temp[k + (2 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 3 + i * length] +=
+              temp[k + (3 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 4 + i * length] +=
+              temp[k + (4 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 5 + i * length] +=
+              temp[k + (5 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 6 + i * length] +=
+              temp[k + (6 + j + r) * length] * matrixA[k + i * length];
+          matrixC[j + r + 7 + i * length] +=
+              temp[k + (7 + j + r) * length] * matrixA[k + i * length];
+        }
+      }
+    }
+    for (; j < length; j++) {
+      for (int k = 0; k < length; k++) {
+        matrixC[j + 0 + i * length] +=
+            temp[k + (0 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 1 + i * length] +=
+            temp[k + (1 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 2 + i * length] +=
+            temp[k + (2 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 3 + i * length] +=
+            temp[k + (3 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 4 + i * length] +=
+            temp[k + (4 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 5 + i * length] +=
+            temp[k + (5 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 6 + i * length] +=
+            temp[k + (6 + j) * length] * matrixA[k + i * length];
+        matrixC[j + 7 + i * length] +=
+            temp[k + (7 + j) * length] * matrixA[k + i * length];
+      }
+    }
+  }
+
+  free(temp);
+#endif
 }
 
 void multiplyMatrix(int length, double *matrixA, double *matrixB,

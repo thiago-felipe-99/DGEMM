@@ -11,6 +11,7 @@
 
 #define EXIT_FAILURE 1
 
+#ifndef AVX
 #ifdef __AVX512F__
 #define AVX 512
 #define AVX_QT_DOUBLE 8
@@ -23,6 +24,7 @@
 #define AVX 0
 #define AVX_QT_DOUBLE 8
 #define AVX_SIZE_DOUBLE 32
+#endif
 #endif
 
 const double range = 4096;

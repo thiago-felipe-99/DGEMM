@@ -1,5 +1,5 @@
 .PHONY: all
-all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx_disable dgemm_avx256  dgemm_avx256_unroll
+all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx_disable dgemm_avx256 dgemm_avx_disable_unroll dgemm_avx256_unroll
 
 .PHONY: prepare
 prepare:
@@ -30,21 +30,37 @@ dgemm_avx_disable: prepare
 dgemm_avx256: prepare
 	gcc -O3 -mavx2 -o out/dgemm_avx256 src/dgemm_avx.c src/debug.c -lm
 
+.PHONY: dgemm_avx_disable_unroll
+dgemm_avx_disable_unroll: 
+	gcc -O3 -mavx2 -DUNROLL=2  -o out/dgemm_avx_disable_unroll_02 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=4  -o out/dgemm_avx_disable_unroll_04 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8  -o out/dgemm_avx_disable_unroll_08 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=16 -o out/dgemm_avx_disable_unroll_16 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=32 -o out/dgemm_avx_disable_unroll_32 src/dgemm_avx_unroll.c src/debug.c -lm
+
 .PHONY: dgemm_avx256_unroll
 dgemm_avx256_unroll: 
-	gcc -O3 -mavx2 -DUNROLL=2  -o out/dgemm_avx256_unroll_02 src/dgemm_avx256_unroll.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=4  -o out/dgemm_avx256_unroll_04 src/dgemm_avx256_unroll.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=8  -o out/dgemm_avx256_unroll_08 src/dgemm_avx256_unroll.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=16 -o out/dgemm_avx256_unroll_16 src/dgemm_avx256_unroll.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=32 -o out/dgemm_avx256_unroll_32 src/dgemm_avx256_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=2  -o out/dgemm_avx256_unroll_02 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=4  -o out/dgemm_avx256_unroll_04 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8  -o out/dgemm_avx256_unroll_08 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=16 -o out/dgemm_avx256_unroll_16 src/dgemm_avx_unroll.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=32 -o out/dgemm_avx256_unroll_32 src/dgemm_avx_unroll.c src/debug.c -lm
+
+.PHONY: dgemm_avx_disable_unroll_blocking
+dgemm_avx_disable_unroll_blocking: 
+	gcc -O3 -DUNROLL=8 -DBLOCK_SIZE=32  -o out/dgemm_avx_disable_unroll_blocking_032 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -DUNROLL=8 -DBLOCK_SIZE=64  -o out/dgemm_avx_disable_unroll_blocking_064 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -DUNROLL=8 -DBLOCK_SIZE=128 -o out/dgemm_avx_disable_unroll_blocking_128 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -DUNROLL=8 -DBLOCK_SIZE=256 -o out/dgemm_avx_disable_unroll_blocking_256 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -DUNROLL=8 -DBLOCK_SIZE=512 -o out/dgemm_avx_disable_unroll_blocking_512 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
 
 .PHONY: dgemm_avx256_unroll_blocking
 dgemm_avx256_unroll_blocking: 
-	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=32  -o out/dgemm_avx256_unroll_blocking_032 src/dgemm_avx256_unroll_blocking.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=64  -o out/dgemm_avx256_unroll_blocking_064 src/dgemm_avx256_unroll_blocking.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=128 -o out/dgemm_avx256_unroll_blocking_128 src/dgemm_avx256_unroll_blocking.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=256 -o out/dgemm_avx256_unroll_blocking_256 src/dgemm_avx256_unroll_blocking.c src/debug.c -lm
-	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=512 -o out/dgemm_avx256_unroll_blocking_512 src/dgemm_avx256_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=32  -o out/dgemm_avx256_unroll_blocking_032 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=64  -o out/dgemm_avx256_unroll_blocking_064 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=128 -o out/dgemm_avx256_unroll_blocking_128 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=256 -o out/dgemm_avx256_unroll_blocking_256 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
+	gcc -O3 -mavx2 -DUNROLL=8 -DBLOCK_SIZE=512 -o out/dgemm_avx256_unroll_blocking_512 src/dgemm_avx_unroll_blocking.c src/debug.c -lm
 
 .PHONY: dgemm_avx512
 dgemm_avx512: prepare
