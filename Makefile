@@ -1,9 +1,10 @@
 .PHONY: all
-all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx256 dgemm_avx256_unroll dgemm_avx256_unroll_blocking
+all: dgemm_simple dgemm_transpose dgemm_transpose_unroll dgemm_avx256 dgemm_avx256_unroll
 
 .PHONY prepare:
 prepare:
 	mkdir -p ./out
+	mkdir -p ./out_csv/raw
 
 .PHONY: python
 python:
@@ -102,4 +103,10 @@ dgemm_avx512: prepare
 
 .PHONY: clean
 clean:
-	rm -r ./out/*
+	rm -fr ./out/*
+	rm -fr ./out_csv/*
+	rm -fr ./out_csv/raw/*
+
+.PHONY: csv
+csv: clean all
+	exec csv.sh ./out

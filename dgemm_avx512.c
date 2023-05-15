@@ -93,10 +93,7 @@ int main(int argc, char *argv[]) {
   if (length < MAX_PRINT_LINE)
     printMatrix(length, matrixC);
 
-  double seconds = ((double)diff) / CLOCKS_PER_SEC;
-  double mseconds = seconds * 1000;
-  double gflops = ((2 * pow(length, 3)) / pow(10, 9));
-  printf("%d, %.0fms, %.2fGFLOPS/second\n", length, mseconds, gflops / seconds);
+  printResult(length, diff);
 
   free(matrixA);
   free(matrixB);
