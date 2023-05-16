@@ -19,7 +19,7 @@
 #define AVX_SIZE_DOUBLE 32
 #else
 #define AVX 0
-#define AVX_QT_DOUBLE 8
+#define AVX_QT_DOUBLE 4
 #define AVX_SIZE_DOUBLE 32
 #endif
 

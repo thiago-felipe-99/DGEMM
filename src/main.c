@@ -11,7 +11,7 @@
 #include <time.h>
 
 #ifndef MAX_PRINT_LINE
-#define MAX_PRINT_LINE 4097
+#define MAX_PRINT_LINE 0
 #endif
 
 typedef enum {
@@ -134,7 +134,7 @@ void print_matrix(int length, double *matrix) {
   for (int i = 0; i < length; i++) {
     printf("|");
     for (int j = 0; j < length; j++) {
-      printf("%5.2f", matrix[i + j * length]);
+      printf("%5.2f ", matrix[i + j * length]);
     }
     printf("|\n");
   }
@@ -269,8 +269,6 @@ int main(int argc, char *argv[]) {
   double *c = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
-  print_matrix(length, a);
-  print_matrix(length, b);
 
   for (int i = 0; i < DGEMM_COUNT; i++) {
     if (dgemms[i]) {
