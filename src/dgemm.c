@@ -142,28 +142,20 @@ void dgemm_avx(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_avx_unroll(int length, double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
-
-  for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length; ++j) {
-      at[i + j * length] = a[j + i * length];
-    }
-  }
 #if AVX == 256
-  for (int i = 0; i < length; i++) {
-    int j = 0;
-    for (; j < length; j += UNROLL * AVX_QT_DOUBLE) {
+  int i = 0;
+  for (; i < length; i += UNROLL * AVX_QT_DOUBLE) {
+    for (int j = 0; j < length; j++) {
       __m256d acc[UNROLL];
 
       for (int r = 0; r < UNROLL; r++)
         acc[r] = _mm256_load_pd(c + i + j * length + r * AVX_QT_DOUBLE);
 
       for (int k = 0; k < length; k++) {
-        __m256d row = _mm256_broadcast_sd(a + i * length + k);
+        __m256d column = _mm256_broadcast_sd(b + k + j * length);
 
         for (int r = 0; r < UNROLL; r++) {
-          __m256d column =
-              _mm256_load_pd(b + k + j * length + r * AVX_QT_DOUBLE);
+          __m256d row = _mm256_load_pd(a + i + k * length + r * AVX_QT_DOUBLE);
           __m256d mul = _mm256_mul_pd(row, column);
           acc[r] = _mm256_add_pd(acc[r], mul);
         }
@@ -172,16 +164,13 @@ void dgemm_avx_unroll(int length, double *a, double *b, double *c) {
       for (int r = 0; r < UNROLL; r++)
         _mm256_store_pd(c + i + j * length + r * AVX_QT_DOUBLE, acc[r]);
     }
-    for (; j < length; j++) {
-      __m256d acc = _mm256_load_pd(c + i + j * length);
-      for (int k = 0; k < length; k++) {
-        __m256d row = _mm256_broadcast_sd(a + i * length + k);
-        __m256d column = _mm256_load_pd(b + k + j * length);
-        __m256d mul = _mm256_mul_pd(row, column);
-        acc = _mm256_add_pd(acc, mul);
-      }
+  }
 
-      _mm256_store_pd(c + i + j * length, acc);
+  for (int i = 0; i < length; i++) {
+    for (int j = i; j < length; j++) {
+      double temp = c[i + j * length];
+      c[i + j * length] = c[j + i * length];
+      c[j + i * length] = temp;
     }
   }
 #elif AVX == 512
@@ -194,11 +183,11 @@ void dgemm_avx_unroll(int length, double *a, double *b, double *c) {
         acc[r] = _mm512_load_pd(c + i + j * length + r * AVX_QT_DOUBLE);
 
       for (int k = 0; k < length; k++) {
-        __m512d column = _mm512_broadcastsd_pd(_mm_load_sd(a + j * length + k));
+        __m512d column = _mm512_broadcastsd_pd(_mm_load_sd(b + k + j * length));
 
         for (int r = 0; r < UNROLL; r++) {
-          __m512d row = _mm512_load_pd(b + k * length + i + r * AVX_QT_DOUBLE);
-          __m512d mul = _mm512_mul_pd(column, row);
+          __m512d row = _mm512_load_pd(a + i + k * length + r * AVX_QT_DOUBLE);
+          __m512d mul = _mm512_mul_pd(row, column);
           acc[r] = _mm512_add_pd(acc[r], mul);
         }
       }
@@ -207,24 +196,26 @@ void dgemm_avx_unroll(int length, double *a, double *b, double *c) {
         _mm512_store_pd(c + i + j * length + r * AVX_QT_DOUBLE, acc[r]);
     }
   }
-  for (; i < length; i += AVX_QT_DOUBLE) {
-    for (int j = 0; j < length; j++) {
-      __m512d acc = _mm512_load_pd(c + j * length + i);
-      for (int k = 0; k < length; k++) {
-        __m512d column = _mm512_broadcastsd_pd(_mm_load_sd(a + j * length + k));
-        __m512d row = _mm512_load_pd(b + k * length + i);
-        __m512d mul = _mm512_mul_pd(column, row);
-        acc = _mm512_add_pd(acc, mul);
-      }
 
-      _mm512_store_pd(c + j * length + i, acc);
+  for (int i = 0; i < length; i++) {
+    for (int j = i; j < length; j++) {
+      double temp = c[i + j * length];
+      c[i + j * length] = c[j + i * length];
+      c[j + i * length] = temp;
     }
   }
 #else
+  double *at = malloc(length * length * sizeof(double));
+
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; ++j) {
+      at[i + j * length] = a[j + i * length];
+    }
+  }
+
   for (int i = 0; i < length; i++) {
     int j = 0;
-    for (j = 0; j < length - UNROLL * AVX_QT_DOUBLE;
-         j += UNROLL * AVX_QT_DOUBLE) {
+    for (j = 0; j < length; j += UNROLL * AVX_QT_DOUBLE) {
       for (int k = 0; k < length; k++) {
         for (int r = 0; r < UNROLL; r++) {
           c[i * length + j + r + 0] +=
@@ -246,40 +237,27 @@ void dgemm_avx_unroll(int length, double *a, double *b, double *c) {
         }
       }
     }
-    for (; j < length; j++) {
-      for (int k = 0; k < length; k++) {
-        c[i * length + j + 0] += at[k + i * length] * b[k + (0 + j) * length];
-        c[i * length + j + 1] += at[k + i * length] * b[k + (1 + j) * length];
-        c[i * length + j + 2] += at[k + i * length] * b[k + (2 + j) * length];
-        c[i * length + j + 3] += at[k + i * length] * b[k + (3 + j) * length];
-        c[i * length + j + 4] += at[k + i * length] * b[k + (4 + j) * length];
-        c[i * length + j + 5] += at[k + i * length] * b[k + (5 + j) * length];
-        c[i * length + j + 6] += at[k + i * length] * b[k + (6 + j) * length];
-        c[i * length + j + 7] += at[k + i * length] * b[k + (7 + j) * length];
-      }
-    }
   }
 
-#endif
   free(at);
+#endif
 }
 
 void block_avx_unroll_blocking(int length, int si, int sj, int sk, double *a,
                                double *b, double *c) {
 #if AVX == 256
-  for (int i = 0; i < si + BLOCK_SIZE; i += UNROLL * AVX_QT_DOUBLE) {
-    for (int j = 0; j < sj + BLOCK_SIZE; j++) {
+  for (int i = si; i < si + BLOCK_SIZE; i += UNROLL * AVX_QT_DOUBLE) {
+    for (int j = sj; j < sj + BLOCK_SIZE; j++) {
       __m256d acc[UNROLL];
 
       for (int r = 0; r < UNROLL; r++)
         acc[r] = _mm256_load_pd(c + i + j * length + r * AVX_QT_DOUBLE);
 
-      for (int k = 0; k < sk + BLOCK_SIZE; k++) {
-        __m256d row = _mm256_broadcast_sd(a + i * length + j);
+      for (int k = sk; k < sk + BLOCK_SIZE; k++) {
+        __m256d column = _mm256_broadcast_sd(b + k + j * length);
 
         for (int r = 0; r < UNROLL; r++) {
-          __m256d column =
-              _mm256_load_pd(b + k * length + j + r * AVX_QT_DOUBLE);
+          __m256d row = _mm256_load_pd(a + i + k * length + r * AVX_QT_DOUBLE);
           __m256d mul = _mm256_mul_pd(row, column);
           acc[r] = _mm256_add_pd(acc[r], mul);
         }
@@ -290,19 +268,18 @@ void block_avx_unroll_blocking(int length, int si, int sj, int sk, double *a,
     }
   }
 #elif AVX == 512
-  for (int i = 0; i < si + BLOCK_SIZE; i += UNROLL * AVX_QT_DOUBLE) {
-    for (int j = 0; j < sj + BLOCK_SIZE; j++) {
+  for (int i = si; i < si + BLOCK_SIZE; i += UNROLL * AVX_QT_DOUBLE) {
+    for (int j = sj; j < sj + BLOCK_SIZE; j++) {
       __m512d acc[UNROLL];
 
       for (int r = 0; r < UNROLL; r++)
         acc[r] = _mm512_load_pd(c + i + j * length + r * AVX_QT_DOUBLE);
 
-      for (int k = 0; k < sk + BLOCK_SIZE; k++) {
-        __m512d row = _mm512_broadcastsd_pd(_mm_load_sd(a + i * length + k));
+      for (int k = sk; k < sk + BLOCK_SIZE; k++) {
+        __m512d column = _mm512_broadcastsd_pd(_mm_load_sd(b + k + j * length));
 
         for (int r = 0; r < UNROLL; r++) {
-          __m512d column =
-              _mm512_load_pd(b + k * length + j + r * AVX_QT_DOUBLE);
+          __m512d row = _mm512_load_pd(a + i + k * length + r * AVX_QT_DOUBLE);
           __m512d mul = _mm512_mul_pd(row, column);
           acc[r] = _mm512_add_pd(acc[r], mul);
         }
@@ -321,11 +298,9 @@ void block_avx_unroll_blocking(int length, int si, int sj, int sk, double *a,
     }
   }
 
-  for (int i = 0; i < length; i++) {
-    int j = 0;
-    for (j = 0; j < length - UNROLL * AVX_QT_DOUBLE;
-         j += UNROLL * AVX_QT_DOUBLE) {
-      for (int k = 0; k < length; k++) {
+  for (int i = si; i < si + BLOCK_SIZE; i++) {
+    for (int j = sj; j < length; j += UNROLL * AVX_QT_DOUBLE) {
+      for (int k = sk; k < length; k++) {
         for (int r = 0; r < UNROLL; r++) {
           c[i * length + j + r + 0] +=
               at[k + i * length] * b[k + (0 + j + r) * length];
