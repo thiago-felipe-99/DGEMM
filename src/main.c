@@ -10,10 +10,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef MAX_PRINT_LINE
-#define MAX_PRINT_LINE 0
-#endif
-
 typedef enum {
   simple,
   transpose,
@@ -69,17 +65,18 @@ int process_length(char *option) {
 void print_help() {}
 
 void parse_options(int argc, char *argv[], bool dgemms[], int *length,
-                   bool *random) {
+                   bool *random, bool *show_result) {
   struct option long_options[] = {{"dgemm", required_argument, NULL, 'd'},
                                   {"length", required_argument, NULL, 'l'},
                                   {"random", no_argument, NULL, 'r'},
+                                  {"show-result", no_argument, NULL, 's'},
                                   {"help", no_argument, NULL, 'h'},
                                   {NULL, 0, NULL, 0}};
 
   bool is_set_dgemms = false, is_set_length = false;
 
   int option;
-  while ((option = getopt_long(argc, argv, "d:l:rh", long_options, NULL)) !=
+  while ((option = getopt_long(argc, argv, "d:l:rhs", long_options, NULL)) !=
          -1) {
     switch (option) {
     case 'd':
@@ -92,6 +89,9 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
       break;
     case 'r':
       *random = true;
+      break;
+    case 's':
+      *show_result = true;
       break;
     case 'h':
       print_help();
@@ -260,9 +260,9 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
 int main(int argc, char *argv[]) {
   bool dgemms[DGEMM_COUNT];
   int length;
-  bool random;
+  bool random, show_result;
 
-  parse_options(argc, argv, dgemms, &length, &random);
+  parse_options(argc, argv, dgemms, &length, &random, &show_result);
 
   double *a = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
   double *b = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
       multiply(i, length, a, b, c);
       diff = clock() - start;
 
-      if (length <= MAX_PRINT_LINE)
+      if (show_result)
         print_matrix(length, c);
 
       print_result(length, diff);
