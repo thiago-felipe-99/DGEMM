@@ -1,50 +1,132 @@
 #include "dgemm.h"
 #include <errno.h>
+#include <float.h>
+#include <getopt.h>
 #include <limits.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #ifndef MAX_PRINT_LINE
 #define MAX_PRINT_LINE 4097
 #endif
 
-int get_matrix_length(int argc, char *argv[]) {
-  int length;
-  char *endptr;
+typedef enum {
+  simple,
+  transpose,
+  transpose_unroll,
+  avx,
+  avx_unroll,
+  avx_unroll_blocking,
+  DGEMM_COUNT
+} dgemm;
 
-  if (argc != 2) {
-    fprintf(stderr, "Error: Invalid number of arguments\n");
-    return EXIT_FAILURE;
+void process_dgemms(char *option, bool dgemms[]) {
+  char *token;
+  const char delimiter[] = ",";
+  token = strtok(option, delimiter);
+  while (token != NULL) {
+
+    if (strcmp(token, "simple") == 0)
+      dgemms[simple] = true;
+    else if (strcmp(token, "transpose") == 0)
+      dgemms[transpose] = true;
+    else if (strcmp(token, "transpose_unroll") == 0)
+      dgemms[transpose_unroll] = true;
+    else if (strcmp(token, "avx") == 0)
+      dgemms[avx] = true;
+    else if (strcmp(token, "avx_unroll") == 0)
+      dgemms[avx_unroll] = true;
+    else if (strcmp(token, "avx_unroll_blocking") == 0)
+      dgemms[avx_unroll_blocking] = true;
+
+    token = strtok(NULL, delimiter);
   }
+}
 
+int process_length(char *option) {
+  char *endptr;
   errno = 0;
 
-  long int_val = strtol(argv[1], &endptr, 10);
+  long int_val = strtol(option, &endptr, 10);
 
   if (errno != 0 || *endptr != '\0') {
     fprintf(stderr, "Error: Invalid input\n");
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
   }
 
   if (int_val < INT_MIN || int_val > INT_MAX) {
     fprintf(stderr, "Error: Input out of range\n");
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
   }
 
-  length = (int)int_val;
-
-  return length;
+  return (int)int_val;
 }
 
-void generate_randons_matrices(int length, double *a, double *b, double *c) {
+void print_help() {}
+
+void parse_options(int argc, char *argv[], bool dgemms[], int *length,
+                   bool *random) {
+  struct option long_options[] = {{"dgemm", required_argument, NULL, 'd'},
+                                  {"length", required_argument, NULL, 'l'},
+                                  {"random", no_argument, NULL, 'r'},
+                                  {"help", no_argument, NULL, 'h'},
+                                  {NULL, 0, NULL, 0}};
+
+  bool is_set_dgemms = false, is_set_length = false;
+
+  int option;
+  while ((option = getopt_long(argc, argv, "d:l:rh", long_options, NULL)) !=
+         -1) {
+    switch (option) {
+    case 'd':
+      process_dgemms(optarg, dgemms);
+      is_set_dgemms = true;
+      break;
+    case 'l':
+      *length = process_length(optarg);
+      is_set_length = true;
+      break;
+    case 'r':
+      *random = true;
+      break;
+    case 'h':
+      print_help();
+      exit(0);
+    default:
+      fprintf(stderr, "Error: Invalid option\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (!is_set_length || !is_set_dgemms) {
+    print_help();
+    exit(EXIT_FAILURE);
+  }
+}
+
+void generate_matrices(int length, double *a, double *b, bool random) {
   srand(time(NULL));
 
+  if (random) {
+    for (int index = 0; index < length * length; index++) {
+      a[index] = (double)4 * rand() / RAND_MAX;
+      b[index] = (double)4 * rand() / RAND_MAX;
+    }
+  } else {
+    for (int index = 0; index < length * length; index++) {
+      a[index] = index;
+      b[index] = index;
+    }
+  }
+}
+
+void clean_matrix(int length, double *a) {
   for (int index = 0; index < length * length; index++) {
-    a[index] = index;
-    b[index] = index;
-    c[index] = 0;
+    a[index] = 0;
   }
 }
 
@@ -52,7 +134,7 @@ void print_matrix(int length, double *matrix) {
   for (int i = 0; i < length; i++) {
     printf("|");
     for (int j = 0; j < length; j++) {
-      printf("%5.0f ", matrix[i + j * length]);
+      printf("%5.2f", matrix[i + j * length]);
     }
     printf("|\n");
   }
@@ -107,15 +189,6 @@ void copy_to_small_matrix(int big_length, int small_length, double *big,
   }
 }
 
-typedef enum {
-  simple,
-  transpose,
-  transpose_unroll,
-  avx,
-  avx_unroll,
-  avx_unroll_blocking
-} dgemm;
-
 void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   int new_length = length;
   double *new_a, *new_b, *new_c;
@@ -155,6 +228,7 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
 
   switch (dgemm) {
   case simple:
+  case DGEMM_COUNT:
     dgemm_simple(new_length, new_a, new_b, new_c);
     break;
   case transpose:
@@ -184,22 +258,34 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
 }
 
 int main(int argc, char *argv[]) {
-  int length = get_matrix_length(argc, argv);
+  bool dgemms[DGEMM_COUNT];
+  int length;
+  bool random;
+
+  parse_options(argc, argv, dgemms, &length, &random);
 
   double *a = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
   double *b = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
   double *c = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
 
-  generate_randons_matrices(length, a, b, c);
+  generate_matrices(length, a, b, random);
+  print_matrix(length, a);
+  print_matrix(length, b);
 
-  clock_t start = clock(), diff;
-  multiply(avx_unroll, length, a, b, c);
-  diff = clock() - start;
+  for (int i = 0; i < DGEMM_COUNT; i++) {
+    if (dgemms[i]) {
+      clean_matrix(length, c);
 
-  if (length <= MAX_PRINT_LINE)
-    print_matrix(length, c);
+      clock_t start = clock(), diff;
+      multiply(i, length, a, b, c);
+      diff = clock() - start;
 
-  print_result(length, diff);
+      if (length <= MAX_PRINT_LINE)
+        print_matrix(length, c);
+
+      print_result(length, diff);
+    }
+  }
 
   free(a);
   free(b);

@@ -6,7 +6,7 @@ void dgemm_simple(int length, double *a, double *b, double *c) {
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
       for (int k = 0; k < length; k++) {
-        c[i + j * length] += b[k + j * length] * a[i + k * length];
+        c[i * length + j] += b[k + j * length] * a[i + k * length];
       }
     }
   }
