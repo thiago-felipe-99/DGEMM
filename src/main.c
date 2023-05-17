@@ -325,30 +325,24 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
 }
 
 int checkAVXOrAVX2Support() {
-  int cpuInfo[4]; // Array to store CPU information
+  int cpuInfo[4];
 
-  // Use CPUID instruction to query feature information
   __asm__ volatile("cpuid"
                    : "=a"(cpuInfo[0]), "=b"(cpuInfo[1]), "=c"(cpuInfo[2]),
                      "=d"(cpuInfo[3])
                    : "a"(1));
 
-  // Check if AVX (bit 28 in ECX register) and AVX2 (bit 5 in EBX register) bits
-  // are set
   return ((cpuInfo[2] & (1 << 28)) || (cpuInfo[1] & (1 << 5)));
 }
 
-// Function to check AVX512 support
 int checkAVX512Support() {
-  int cpuInfo[4]; // Array to store CPU information
+  int cpuInfo[4];
 
-  // Use CPUID instruction to query feature information
   __asm__ volatile("cpuid"
                    : "=a"(cpuInfo[0]), "=b"(cpuInfo[1]), "=c"(cpuInfo[2]),
                      "=d"(cpuInfo[3])
                    : "a"(7), "c"(0));
 
-  // Check if AVX512F (bit 16 in EBX register) bit is set
   return (cpuInfo[1] & (1 << 16));
 }
 
@@ -382,8 +376,8 @@ void check_avx(bool dgemms[DGEMM_COUNT]) {
 
 int main(int argc, char *argv[]) {
   bool dgemms[DGEMM_COUNT];
-  int length;
-  bool random, show_result;
+  int length = 0;
+  bool random = false, show_result = false;
 
   for (int i = 0; i < DGEMM_COUNT; i++) {
     dgemms[i] = false;

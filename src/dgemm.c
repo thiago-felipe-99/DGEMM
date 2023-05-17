@@ -3,6 +3,16 @@
 #include <stdlib.h>
 #include <x86intrin.h>
 
+void transpose_matrix(int length, double *matrix) {
+  for (int i = 0; i < length; i++) {
+    for (int j = i; j < length; j++) {
+      double temp = matrix[i + j * length];
+      matrix[i + j * length] = matrix[j + i * length];
+      matrix[j + i * length] = temp;
+    }
+  }
+}
+
 void dgemm_simple(int length, double *a, double *b, double *c) {
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
@@ -43,15 +53,14 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
   }
 
   for (int i = 0; i < length; i++) {
-    int j = 0;
-    for (j = 0; j < length - UNROLL; j += UNROLL) {
+    for (int j = 0; j < length - UNROLL; j += UNROLL) {
       for (int k = 0; k < length; k++) {
         for (int r = 0; r < UNROLL; r++) {
           c[i * length + j + r] += at[(r + i) * length + k] * b[k + j * length];
         }
       }
     }
-    for (; j < length; j++) {
+    for (int j = length - UNROLL; j < length; j++) {
       for (int k = 0; k < length; k++) {
         c[i * length + j] += at[i * length + k] * b[k + j * length];
       }
@@ -100,13 +109,7 @@ void dgemm_avx256(int length, double *a, double *b, double *c) {
     }
   }
 
-  for (int i = 0; i < length; i++) {
-    for (int j = i; j < length; j++) {
-      double temp = c[i + j * length];
-      c[i + j * length] = c[j + i * length];
-      c[j + i * length] = temp;
-    }
-  }
+  transpose_matrix(length, c);
 #endif
 }
 
@@ -126,13 +129,7 @@ void dgemm_avx512(int length, double *a, double *b, double *c) {
     }
   }
 
-  for (int i = 0; i < length; i++) {
-    for (int j = i; j < length; j++) {
-      double temp = c[i + j * length];
-      c[i + j * length] = c[j + i * length];
-      c[j + i * length] = temp;
-    }
-  }
+  transpose_matrix(length, c);
 #endif
 }
 
@@ -190,13 +187,7 @@ void dgemm_avx256_unroll(int length, double *a, double *b, double *c) {
     }
   }
 
-  for (int i = 0; i < length; i++) {
-    for (int j = i; j < length; j++) {
-      double temp = c[i + j * length];
-      c[i + j * length] = c[j + i * length];
-      c[j + i * length] = temp;
-    }
-  }
+  transpose_matrix(length, c);
 #endif
 }
 
@@ -225,29 +216,15 @@ void dgemm_avx512_unroll(int length, double *a, double *b, double *c) {
     }
   }
 
-  for (int i = 0; i < length; i++) {
-    for (int j = i; j < length; j++) {
-      double temp = c[i + j * length];
-      c[i + j * length] = c[j + i * length];
-      c[j + i * length] = temp;
-    }
-  }
+  transpose_matrix(length, c);
 #endif
 }
 
 void block_simd_manual_unroll_blocking(int length, int si, int sj, int sk,
-                                       double *a, double *b, double *c) {
-  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
-
-  for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length; ++j) {
-      at[i + j * length] = a[j + i * length];
-    }
-  }
-
+                                       double *at, double *b, double *c) {
   for (int i = si; i < si + BLOCK_SIZE; i++) {
-    for (int j = sj; j < length; j += UNROLL * SIMD_MANUAL_QT_DOUBLE) {
-      for (int k = sk; k < length; k++) {
+    for (int j = sj; j < sj + BLOCK_SIZE; j += UNROLL * SIMD_MANUAL_QT_DOUBLE) {
+      for (int k = sk; k < sk + BLOCK_SIZE; k++) {
         for (int r = 0; r < UNROLL; r++) {
           c[i * length + j + r + 0] +=
               at[k + i * length] * b[k + (0 + j + r) * length];
@@ -261,8 +238,6 @@ void block_simd_manual_unroll_blocking(int length, int si, int sj, int sk,
       }
     }
   }
-
-  free(at);
 }
 
 void block_avx256_unroll_blocking(int length, int si, int sj, int sk, double *a,
@@ -326,6 +301,8 @@ void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
     for (int si = 0; si < length; si += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_avx256_unroll_blocking(length, si, sj, sk, a, b, c);
+
+  transpose_matrix(length, c);
 }
 
 void dgemm_avx512_unroll_blocking(int length, double *a, double *b, double *c) {
@@ -333,12 +310,24 @@ void dgemm_avx512_unroll_blocking(int length, double *a, double *b, double *c) {
     for (int si = 0; si < length; si += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_avx512_unroll_blocking(length, si, sj, sk, a, b, c);
+
+  transpose_matrix(length, c);
 }
 
 void dgemm_simd_manual_unroll_blocking(int length, double *a, double *b,
                                        double *c) {
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
+
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; ++j) {
+      at[i + j * length] = a[j + i * length];
+    }
+  }
+
   for (int sj = 0; sj < length; sj += BLOCK_SIZE)
     for (int si = 0; si < length; si += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
-        block_simd_manual_unroll_blocking(length, si, sj, sk, a, b, c);
+        block_simd_manual_unroll_blocking(length, si, sj, sk, at, b, c);
+
+  free(at);
 }
