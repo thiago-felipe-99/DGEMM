@@ -8,23 +8,23 @@ prepare:
 
 .PHONY: dgemm
 dgemm: prepare
-	gcc -O3 -mavx2 -mavx512f -o out/dgemm src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -o out/dgemm src/main.c src/dgemm.c -lm
 
 .PHONY: dgemm_unroll
 dgemm_unroll: 
-	gcc -O3 -mavx2 -mavx512f -DUNROLL=2  -o out/dgemm_unroll_02 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DUNROLL=4  -o out/dgemm_unroll_04 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DUNROLL=8  -o out/dgemm_unroll_08 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DUNROLL=16 -o out/dgemm_unroll_16 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DUNROLL=32 -o out/dgemm_unroll_32 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DUNROLL=2  -o out/dgemm_unroll_02 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DUNROLL=4  -o out/dgemm_unroll_04 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DUNROLL=8  -o out/dgemm_unroll_08 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DUNROLL=16 -o out/dgemm_unroll_16 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DUNROLL=32 -o out/dgemm_unroll_32 src/main.c src/dgemm.c -lm
 
 .PHONY: dgemm_blocking
 dgemm_blocking: 
-	gcc -O3 -mavx2 -mavx512f -DBLOCK_SIZE=32  -o out/dgemm_blocking_032 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DBLOCK_SIZE=64  -o out/dgemm_blocking_064 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DBLOCK_SIZE=128 -o out/dgemm_blocking_128 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DBLOCK_SIZE=256 -o out/dgemm_blocking_256 src/main.c src/dgemm.c -lm
-	gcc -O3 -mavx2 -mavx512f -DBLOCK_SIZE=512 -o out/dgemm_blocking_512 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DBLOCK_SIZE=32  -o out/dgemm_blocking_032 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DBLOCK_SIZE=64  -o out/dgemm_blocking_064 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DBLOCK_SIZE=128 -o out/dgemm_blocking_128 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DBLOCK_SIZE=256 -o out/dgemm_blocking_256 src/main.c src/dgemm.c -lm
+	gcc -O3 -march=native -DBLOCK_SIZE=512 -o out/dgemm_blocking_512 src/main.c src/dgemm.c -lm
 
 .PHONY: clean
 clean:

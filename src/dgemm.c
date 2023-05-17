@@ -14,7 +14,7 @@ void dgemm_simple(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_transpose(int length, double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
@@ -34,7 +34,7 @@ void dgemm_transpose(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   for (int i = 0; i < length; i++) {
     for (int j = 0; j < length; ++j) {
@@ -62,7 +62,7 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_simd_manual(int length, double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   for (int i = 0; i < length; ++i) {
     for (int j = 0; j < length; ++j) {
@@ -85,6 +85,7 @@ void dgemm_simd_manual(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_avx256(int length, double *a, double *b, double *c) {
+#if __AVX__ || __AVX2__
   for (int i = 0; i < length; i += AVX256_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
       __m256d acc = _mm256_load_pd(c + i + j * length);
@@ -106,9 +107,11 @@ void dgemm_avx256(int length, double *a, double *b, double *c) {
       c[j + i * length] = temp;
     }
   }
+#endif
 }
 
 void dgemm_avx512(int length, double *a, double *b, double *c) {
+#if __AVX512F__
   for (int i = 0; i < length; i += AVX512_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
       __m512d acc = _mm512_load_pd(c + i + j * length);
@@ -130,10 +133,11 @@ void dgemm_avx512(int length, double *a, double *b, double *c) {
       c[j + i * length] = temp;
     }
   }
+#endif
 }
 
 void dgemm_simd_manual_unroll(int length, double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   for (int i = 0; i < length; i++) {
     for (int j = 0; j < length; ++j) {
@@ -162,6 +166,7 @@ void dgemm_simd_manual_unroll(int length, double *a, double *b, double *c) {
 }
 
 void dgemm_avx256_unroll(int length, double *a, double *b, double *c) {
+#if __AVX__ || __AVX2__
   for (int i = 0; i < length; i += UNROLL * AVX256_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
       __m256d acc[UNROLL];
@@ -192,9 +197,11 @@ void dgemm_avx256_unroll(int length, double *a, double *b, double *c) {
       c[j + i * length] = temp;
     }
   }
+#endif
 }
 
 void dgemm_avx512_unroll(int length, double *a, double *b, double *c) {
+#if __AVX512F__
   for (int i = 0; i < length; i += UNROLL * AVX512_QT_DOUBLE) {
     for (int j = 0; j < length; j++) {
       __m512d acc[UNROLL];
@@ -225,11 +232,12 @@ void dgemm_avx512_unroll(int length, double *a, double *b, double *c) {
       c[j + i * length] = temp;
     }
   }
+#endif
 }
 
 void block_simd_manual_unroll_blocking(int length, int si, int sj, int sk,
                                        double *a, double *b, double *c) {
-  double *at = malloc(length * length * sizeof(double));
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   for (int i = 0; i < length; i++) {
     for (int j = 0; j < length; ++j) {
@@ -259,6 +267,7 @@ void block_simd_manual_unroll_blocking(int length, int si, int sj, int sk,
 
 void block_avx256_unroll_blocking(int length, int si, int sj, int sk, double *a,
                                   double *b, double *c) {
+#if __AVX__ || __AVX2__
   for (int i = si; i < si + BLOCK_SIZE; i += UNROLL * AVX256_QT_DOUBLE) {
     for (int j = sj; j < sj + BLOCK_SIZE; j++) {
       __m256d acc[UNROLL];
@@ -281,10 +290,12 @@ void block_avx256_unroll_blocking(int length, int si, int sj, int sk, double *a,
         _mm256_store_pd(c + i + j * length + r * AVX256_QT_DOUBLE, acc[r]);
     }
   }
+#endif
 }
 
 void block_avx512_unroll_blocking(int length, int si, int sj, int sk, double *a,
                                   double *b, double *c) {
+#if __AVX512F__
   for (int i = si; i < si + BLOCK_SIZE; i += UNROLL * AVX512_QT_DOUBLE) {
     for (int j = sj; j < sj + BLOCK_SIZE; j++) {
       __m512d acc[UNROLL];
@@ -307,6 +318,7 @@ void block_avx512_unroll_blocking(int length, int si, int sj, int sk, double *a,
         _mm512_store_pd(c + i + j * length + r * AVX512_QT_DOUBLE, acc[r]);
     }
   }
+#endif
 }
 
 void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
