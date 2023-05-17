@@ -95,8 +95,8 @@ void dgemm_transpose_unroll_blocking(int length, double *a, double *b,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  for (int sj = 0; sj < length; sj += BLOCK_SIZE)
-    for (int si = 0; si < length; si += BLOCK_SIZE)
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_transpose_unroll(length, si, sj, sk, at, b, c);
 
@@ -184,8 +184,8 @@ void dgemm_simd_manual_unroll_blocking(int length, double *a, double *b,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  for (int sj = 0; sj < length; sj += BLOCK_SIZE)
-    for (int si = 0; si < length; si += BLOCK_SIZE)
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_simd_manual_unroll(length, si, sj, sk, at, b, c);
 
@@ -282,8 +282,8 @@ void block_avx256_unroll(int length, int si, int sj, int sk, double *a,
 }
 
 void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
-  for (int sj = 0; sj < length; sj += BLOCK_SIZE)
-    for (int si = 0; si < length; si += BLOCK_SIZE)
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_avx256_unroll(length, si, sj, sk, a, b, c);
 }
@@ -378,8 +378,8 @@ void block_avx512_unroll(int length, int si, int sj, int sk, double *a,
 }
 
 void dgemm_avx512_unroll_blocking(int length, double *a, double *b, double *c) {
-  for (int sj = 0; sj < length; sj += BLOCK_SIZE)
-    for (int si = 0; si < length; si += BLOCK_SIZE)
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_avx512_unroll(length, si, sj, sk, a, b, c);
 }
