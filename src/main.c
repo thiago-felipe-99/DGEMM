@@ -14,11 +14,32 @@ typedef enum {
   simple,
   transpose,
   transpose_unroll,
-  avx,
-  avx_unroll,
-  avx_unroll_blocking,
+  simd_manual,
+  avx256,
+  avx512,
+  simd_manual_unroll,
+  avx256_unroll,
+  avx512_unroll,
+  simd_manual_unroll_blocking,
+  avx256_unroll_blocking,
+  avx512_unroll_blocking,
   DGEMM_COUNT
 } dgemm;
+
+const char *dgemm_names[DGEMM_COUNT] = {
+    "simple",
+    "transpose",
+    "transpose_unroll",
+    "simd_manual",
+    "avx256",
+    "avx512",
+    "simd_manual_unroll",
+    "avx256_unroll",
+    "avx512_unroll",
+    "simd_manual_unroll_blocking",
+    "avx256_unroll_blocking",
+    "avx512_unroll_blocking",
+};
 
 void process_dgemms(char *option, bool dgemms[]) {
   char *token;
@@ -26,18 +47,34 @@ void process_dgemms(char *option, bool dgemms[]) {
   token = strtok(option, delimiter);
   while (token != NULL) {
 
-    if (strcmp(token, "simple") == 0)
+    if (strcmp(token, dgemm_names[simple]) == 0)
       dgemms[simple] = true;
-    else if (strcmp(token, "transpose") == 0)
+    else if (strcmp(token, dgemm_names[transpose]) == 0)
       dgemms[transpose] = true;
-    else if (strcmp(token, "transpose_unroll") == 0)
+    else if (strcmp(token, dgemm_names[transpose_unroll]) == 0)
       dgemms[transpose_unroll] = true;
-    else if (strcmp(token, "avx") == 0)
-      dgemms[avx] = true;
-    else if (strcmp(token, "avx_unroll") == 0)
-      dgemms[avx_unroll] = true;
-    else if (strcmp(token, "avx_unroll_blocking") == 0)
-      dgemms[avx_unroll_blocking] = true;
+    else if (strcmp(token, dgemm_names[simd_manual]) == 0)
+      dgemms[simd_manual] = true;
+    else if (strcmp(token, dgemm_names[avx256]) == 0)
+      dgemms[avx256] = true;
+    else if (strcmp(token, dgemm_names[avx512]) == 0)
+      dgemms[avx512] = true;
+    else if (strcmp(token, dgemm_names[simd_manual_unroll]) == 0)
+      dgemms[simd_manual_unroll] = true;
+    else if (strcmp(token, dgemm_names[avx256_unroll]) == 0)
+      dgemms[avx256_unroll] = true;
+    else if (strcmp(token, dgemm_names[avx512_unroll]) == 0)
+      dgemms[avx512_unroll] = true;
+    else if (strcmp(token, dgemm_names[simd_manual_unroll_blocking]) == 0)
+      dgemms[simd_manual_unroll_blocking] = true;
+    else if (strcmp(token, dgemm_names[avx256_unroll_blocking]) == 0)
+      dgemms[avx256_unroll_blocking] = true;
+    else if (strcmp(token, dgemm_names[avx512_unroll_blocking]) == 0)
+      dgemms[avx512_unroll_blocking] = true;
+    else {
+      fprintf(stderr, "Error: Invalid dgemm '%s'\n", token);
+      exit(EXIT_FAILURE);
+    }
 
     token = strtok(NULL, delimiter);
   }
@@ -140,11 +177,12 @@ void print_matrix(int length, double *matrix) {
   }
 }
 
-void print_result(int length, clock_t diff) {
+void print_result(dgemm dgemm, int length, clock_t diff) {
   double seconds = ((double)diff) / CLOCKS_PER_SEC;
   double mseconds = seconds * 1000;
   double gflops = ((2 * pow(length, 3)) / pow(10, 9));
-  printf("%d,%.0f,%.2f\n", length, mseconds, gflops / seconds);
+  printf("%s,%d,%.0f,%.2f\n", dgemm_names[dgemm], length, mseconds,
+         gflops / seconds);
 }
 
 void copy_to_big_matrix(int old_length, int new_length, double *old_a,
@@ -195,13 +233,27 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   int factor;
 
   switch (dgemm) {
-  case avx:
-    factor = AVX_QT_DOUBLE;
+  case simd_manual:
+    factor = SIMD_MANUAL_QT_DOUBLE;
     break;
-  case avx_unroll:
-    factor = AVX_QT_DOUBLE * UNROLL;
+  case avx256:
+    factor = AVX256_QT_DOUBLE;
     break;
-  case avx_unroll_blocking:
+  case avx512:
+    factor = AVX512_QT_DOUBLE;
+    break;
+  case simd_manual_unroll:
+    factor = SIMD_MANUAL_QT_DOUBLE * UNROLL;
+    break;
+  case avx256_unroll:
+    factor = AVX256_QT_DOUBLE * UNROLL;
+    break;
+  case avx512_unroll:
+    factor = AVX512_QT_DOUBLE * UNROLL;
+    break;
+  case simd_manual_unroll_blocking:
+  case avx256_unroll_blocking:
+  case avx512_unroll_blocking:
     factor = BLOCK_SIZE;
     break;
   default:
@@ -211,12 +263,9 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   if (length % factor) {
     new_length += (factor - length % factor);
 
-    new_a = aligned_alloc(AVX_SIZE_DOUBLE,
-                          new_length * new_length * sizeof(double));
-    new_b = aligned_alloc(AVX_SIZE_DOUBLE,
-                          new_length * new_length * sizeof(double));
-    new_c = aligned_alloc(AVX_SIZE_DOUBLE,
-                          new_length * new_length * sizeof(double));
+    new_a = aligned_alloc(ALIGN, new_length * new_length * sizeof(double));
+    new_b = aligned_alloc(ALIGN, new_length * new_length * sizeof(double));
+    new_c = aligned_alloc(ALIGN, new_length * new_length * sizeof(double));
 
     copy_to_big_matrix(length, new_length, a, new_a, b, new_b, c, new_c);
 
@@ -237,14 +286,32 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case transpose_unroll:
     dgemm_transpose_unroll(new_length, new_a, new_b, new_c);
     break;
-  case avx:
-    dgemm_avx(new_length, new_a, new_b, new_c);
+  case simd_manual:
+    dgemm_simd_manual(new_length, new_a, new_b, new_c);
     break;
-  case avx_unroll:
-    dgemm_avx_unroll(new_length, new_a, new_b, new_c);
+  case avx256:
+    dgemm_avx256(new_length, new_a, new_b, new_c);
     break;
-  case avx_unroll_blocking:
-    dgemm_avx_unroll_blocking(new_length, new_a, new_b, new_c);
+  case avx512:
+    dgemm_avx512(new_length, new_a, new_b, new_c);
+    break;
+  case simd_manual_unroll:
+    dgemm_simd_manual_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case avx256_unroll:
+    dgemm_avx256_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case avx512_unroll:
+    dgemm_avx512_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case simd_manual_unroll_blocking:
+    dgemm_simd_manual_unroll_blocking(new_length, new_a, new_b, new_c);
+    break;
+  case avx256_unroll_blocking:
+    dgemm_avx256_unroll_blocking(new_length, new_a, new_b, new_c);
+    break;
+  case avx512_unroll_blocking:
+    dgemm_avx512_unroll_blocking(new_length, new_a, new_b, new_c);
     break;
   }
 
@@ -264,9 +331,9 @@ int main(int argc, char *argv[]) {
 
   parse_options(argc, argv, dgemms, &length, &random, &show_result);
 
-  double *a = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
-  double *b = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
-  double *c = aligned_alloc(AVX_SIZE_DOUBLE, length * length * sizeof(double));
+  double *a = aligned_malloc(ALIGN, length * length * sizeof(double));
+  double *b = aligned_malloc(ALIGN, length * length * sizeof(double));
+  double *c = aligned_malloc(ALIGN, length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
 
@@ -281,7 +348,7 @@ int main(int argc, char *argv[]) {
       if (show_result)
         print_matrix(length, c);
 
-      print_result(length, diff);
+      print_result(i, length, diff);
     }
   }
 
