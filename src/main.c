@@ -225,19 +225,12 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
 
   switch (dgemm) {
   case avx256:
+  case avx256_unroll:
     factor = AVX256_QT_DOUBLE;
     break;
   case avx512:
-    factor = AVX512_QT_DOUBLE;
-    break;
-  case simd_manual_unroll:
-    factor = SIMD_MANUAL_QT_DOUBLE * UNROLL;
-    break;
-  case avx256_unroll:
-    factor = AVX256_QT_DOUBLE * UNROLL;
-    break;
   case avx512_unroll:
-    factor = AVX512_QT_DOUBLE * UNROLL;
+    factor = AVX512_QT_DOUBLE;
     break;
   case simple_unroll_blocking:
   case transpose_unroll_blocking:
