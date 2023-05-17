@@ -331,9 +331,9 @@ int main(int argc, char *argv[]) {
 
   parse_options(argc, argv, dgemms, &length, &random, &show_result);
 
-  double *a = aligned_malloc(ALIGN, length * length * sizeof(double));
-  double *b = aligned_malloc(ALIGN, length * length * sizeof(double));
-  double *c = aligned_malloc(ALIGN, length * length * sizeof(double));
+  double *a = malloc(length * length * sizeof(double));
+  double *b = malloc(length * length * sizeof(double));
+  double *c = malloc(length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
 
