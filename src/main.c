@@ -13,13 +13,16 @@
 typedef enum {
   simple,
   transpose,
-  transpose_unroll,
   simd_manual,
   avx256,
   avx512,
+  simple_unroll,
+  transpose_unroll,
   simd_manual_unroll,
   avx256_unroll,
   avx512_unroll,
+  simple_unroll_blocking,
+  transpose_unroll_blocking,
   simd_manual_unroll_blocking,
   avx256_unroll_blocking,
   avx512_unroll_blocking,
@@ -29,13 +32,16 @@ typedef enum {
 const char *dgemm_names[DGEMM_COUNT] = {
     "simple",
     "transpose",
-    "transpose_unroll",
     "simd_manual",
     "avx256",
     "avx512",
+    "simple_unroll",
+    "transpose_unroll",
     "simd_manual_unroll",
     "avx256_unroll",
     "avx512_unroll",
+    "simple_unroll_blocking",
+    "transpose_unroll_blocking",
     "simd_manual_unroll_blocking",
     "avx256_unroll_blocking",
     "avx512_unroll_blocking",
@@ -46,32 +52,17 @@ void process_dgemms(char *option, bool dgemms[]) {
   const char delimiter[] = ",";
   token = strtok(option, delimiter);
   while (token != NULL) {
+    bool found = false;
 
-    if (strcmp(token, dgemm_names[simple]) == 0)
-      dgemms[simple] = true;
-    else if (strcmp(token, dgemm_names[transpose]) == 0)
-      dgemms[transpose] = true;
-    else if (strcmp(token, dgemm_names[transpose_unroll]) == 0)
-      dgemms[transpose_unroll] = true;
-    else if (strcmp(token, dgemm_names[simd_manual]) == 0)
-      dgemms[simd_manual] = true;
-    else if (strcmp(token, dgemm_names[avx256]) == 0)
-      dgemms[avx256] = true;
-    else if (strcmp(token, dgemm_names[avx512]) == 0)
-      dgemms[avx512] = true;
-    else if (strcmp(token, dgemm_names[simd_manual_unroll]) == 0)
-      dgemms[simd_manual_unroll] = true;
-    else if (strcmp(token, dgemm_names[avx256_unroll]) == 0)
-      dgemms[avx256_unroll] = true;
-    else if (strcmp(token, dgemm_names[avx512_unroll]) == 0)
-      dgemms[avx512_unroll] = true;
-    else if (strcmp(token, dgemm_names[simd_manual_unroll_blocking]) == 0)
-      dgemms[simd_manual_unroll_blocking] = true;
-    else if (strcmp(token, dgemm_names[avx256_unroll_blocking]) == 0)
-      dgemms[avx256_unroll_blocking] = true;
-    else if (strcmp(token, dgemm_names[avx512_unroll_blocking]) == 0)
-      dgemms[avx512_unroll_blocking] = true;
-    else {
+    for (dgemm dgemm = simple; dgemm < DGEMM_COUNT; dgemm++) {
+      if (strcmp(token, dgemm_names[dgemm]) == 0) {
+        dgemms[dgemm] = true;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
       fprintf(stderr, "Error: Invalid dgemm '%s'\n", token);
       exit(EXIT_FAILURE);
     }
@@ -169,9 +160,9 @@ void clean_matrix(int length, double *a) {
 
 void print_matrix(int length, double *matrix) {
   for (int i = 0; i < length; i++) {
-    printf("|");
+    printf("| ");
     for (int j = 0; j < length; j++) {
-      printf("%5.2f ", matrix[i + j * length]);
+      printf("%06.2f ", matrix[i + j * length]);
     }
     printf("|\n");
   }
@@ -248,6 +239,8 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case avx512_unroll:
     factor = AVX512_QT_DOUBLE * UNROLL;
     break;
+  case simple_unroll_blocking:
+  case transpose_unroll_blocking:
   case simd_manual_unroll_blocking:
   case avx256_unroll_blocking:
   case avx512_unroll_blocking:
@@ -273,15 +266,13 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   }
 
   switch (dgemm) {
-  case simple:
   case DGEMM_COUNT:
+    return;
+  case simple:
     dgemm_simple(new_length, new_a, new_b, new_c);
     break;
   case transpose:
     dgemm_transpose(new_length, new_a, new_b, new_c);
-    break;
-  case transpose_unroll:
-    dgemm_transpose_unroll(new_length, new_a, new_b, new_c);
     break;
   case simd_manual:
     dgemm_simd_manual(new_length, new_a, new_b, new_c);
@@ -292,6 +283,12 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case avx512:
     dgemm_avx512(new_length, new_a, new_b, new_c);
     break;
+  case simple_unroll:
+    dgemm_simple_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case transpose_unroll:
+    dgemm_transpose_unroll(new_length, new_a, new_b, new_c);
+    break;
   case simd_manual_unroll:
     dgemm_simd_manual_unroll(new_length, new_a, new_b, new_c);
     break;
@@ -300,6 +297,12 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
     break;
   case avx512_unroll:
     dgemm_avx512_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case simple_unroll_blocking:
+    dgemm_simple_unroll(new_length, new_a, new_b, new_c);
+    break;
+  case transpose_unroll_blocking:
+    dgemm_transpose_unroll(new_length, new_a, new_b, new_c);
     break;
   case simd_manual_unroll_blocking:
     dgemm_simd_manual_unroll_blocking(new_length, new_a, new_b, new_c);
