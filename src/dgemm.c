@@ -61,16 +61,6 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
   free(at);
 }
 
-void print_matri(int length, double *matrix) {
-  for (int i = 0; i < length; i++) {
-    printf("|");
-    for (int j = 0; j < length; j++) {
-      printf("%5.2f ", matrix[i + j * length]);
-    }
-    printf("|\n");
-  }
-}
-
 void dgemm_avx(int length, double *a, double *b, double *c) {
 #if AVX == 256
   for (int i = 0; i < length; i += AVX_QT_DOUBLE) {
@@ -330,6 +320,7 @@ void block_avx_unroll_blocking(int length, int si, int sj, int sk, double *a,
 void dgemm_avx_unroll_blocking(int length, double *a, double *b, double *c) {
   for (int sj = 0; sj < length; sj += BLOCK_SIZE)
     for (int si = 0; si < length; si += BLOCK_SIZE)
-      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE) {
         block_avx_unroll_blocking(length, si, sj, sk, a, b, c);
+      }
 }
