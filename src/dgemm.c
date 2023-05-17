@@ -53,14 +53,15 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
   }
 
   for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length - UNROLL; j += UNROLL) {
+    int j = 0;
+    for (j = 0; j < length - UNROLL; j += UNROLL) {
       for (int k = 0; k < length; k++) {
         for (int r = 0; r < UNROLL; r++) {
-          c[i * length + j + r] += at[(r + i) * length + k] * b[k + j * length];
+          c[i * length + j + r] += at[i * length + k] * b[k + (j + r) * length];
         }
       }
     }
-    for (int j = length - UNROLL; j < length; j++) {
+    for (; j < length; j++) {
       for (int k = 0; k < length; k++) {
         c[i * length + j] += at[i * length + k] * b[k + j * length];
       }
