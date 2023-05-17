@@ -233,9 +233,6 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   int factor;
 
   switch (dgemm) {
-  case simd_manual:
-    factor = SIMD_MANUAL_QT_DOUBLE;
-    break;
   case avx256:
     factor = AVX256_QT_DOUBLE;
     break;

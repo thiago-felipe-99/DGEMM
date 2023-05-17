@@ -54,7 +54,7 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
 
   for (int i = 0; i < length; i++) {
     int j = 0;
-    for (j = 0; j < length - UNROLL; j += UNROLL) {
+    for (; j < length - UNROLL; j += UNROLL) {
       for (int k = 0; k < length; k++) {
         for (int r = 0; r < UNROLL; r++) {
           c[i * length + j + r] += at[i * length + k] * b[k + (j + r) * length];
@@ -81,12 +81,18 @@ void dgemm_simd_manual(int length, double *a, double *b, double *c) {
   }
 
   for (int i = 0; i < length; i++) {
-    for (int j = 0; j < length; j += SIMD_MANUAL_QT_DOUBLE) {
+    int j = 0;
+    for (; j < length - SIMD_MANUAL_QT_DOUBLE; j += SIMD_MANUAL_QT_DOUBLE) {
       for (int k = 0; k < length; k++) {
         c[i * length + j + 0] += at[i * length + k] * b[k + (j + 0) * length];
         c[i * length + j + 1] += at[i * length + k] * b[k + (j + 1) * length];
         c[i * length + j + 2] += at[i * length + k] * b[k + (j + 2) * length];
         c[i * length + j + 3] += at[i * length + k] * b[k + (j + 3) * length];
+      }
+    }
+    for (; j < length; j++) {
+      for (int k = 0; k < length; k++) {
+        c[i * length + j] += at[i * length + k] * b[k + j * length];
       }
     }
   }
