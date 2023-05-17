@@ -122,7 +122,7 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
 
   bool is_set_dgemms = false, is_set_length = false, help = false;
 
-  int option, exit_code;
+  int option, exit_code = EXIT_SUCCESS;
 
   while ((option = getopt_long(argc, argv, "hd:l:rs", long_options, NULL)) !=
          -1) {
