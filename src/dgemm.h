@@ -9,8 +9,8 @@
 #define BLOCK_SIZE 32
 #endif
 
-#define AVX256_QT_DOUBLE 8
-#define AVX512_QT_DOUBLE 4
+#define AVX256_QT_DOUBLE 4
+#define AVX512_QT_DOUBLE 8
 #define SIMD_MANUAL_QT_DOUBLE 4
 #define ALIGN 64
 
