@@ -58,7 +58,9 @@ const char *dgemm_names[DGEMM_COUNT] = {
     "avx512_unroll_blocking_parallel",
 };
 
-void process_dgemms(char *option, bool dgemms[]) {
+int process_dgemms(char *option, bool dgemms[]) {
+  int exit_code = EXIT_SUCCESS;
+
   char *token;
   const char delimiter[] = ",";
   token = strtok(option, delimiter);
@@ -75,14 +77,16 @@ void process_dgemms(char *option, bool dgemms[]) {
 
     if (!found) {
       fprintf(stderr, "Error: Invalid dgemm '%s'\n", token);
-      exit(EXIT_FAILURE);
+      exit_code = EXIT_FAILURE;
     }
 
     token = strtok(NULL, delimiter);
   }
+
+  return exit_code;
 }
 
-int process_length(char *option) {
+int process_length(char *option, int *length) {
   char *endptr;
   errno = 0;
 
@@ -90,18 +94,22 @@ int process_length(char *option) {
 
   if (errno != 0 || *endptr != '\0') {
     fprintf(stderr, "Error: Invalid input\n");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
   if (int_val < INT_MIN || int_val > INT_MAX) {
     fprintf(stderr, "Error: Input out of range\n");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
-  return (int)int_val;
+  *length = (int)int_val;
+
+  return EXIT_SUCCESS;
 }
 
-void print_help() {}
+void print_help() {
+  printf("Usage:...");
+}
 
 void parse_options(int argc, char *argv[], bool dgemms[], int *length,
                    bool *random, bool *show_result) {
@@ -112,18 +120,19 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
                                   {"help", no_argument, NULL, 'h'},
                                   {NULL, 0, NULL, 0}};
 
-  bool is_set_dgemms = false, is_set_length = false;
+  bool is_set_dgemms = false, is_set_length = false, help = false;
 
-  int option;
-  while ((option = getopt_long(argc, argv, "d:l:rhs", long_options, NULL)) !=
+  int option, exit_code;
+
+  while ((option = getopt_long(argc, argv, "hd:l:rs", long_options, NULL)) !=
          -1) {
     switch (option) {
     case 'd':
-      process_dgemms(optarg, dgemms);
+      exit_code += process_dgemms(optarg, dgemms);
       is_set_dgemms = true;
       break;
     case 'l':
-      *length = process_length(optarg);
+      exit_code += process_length(optarg, length);
       is_set_length = true;
       break;
     case 'r':
@@ -133,17 +142,16 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
       *show_result = true;
       break;
     case 'h':
-      print_help();
-      exit(0);
+      help = true;
+      break;
     default:
-      fprintf(stderr, "Error: Invalid option\n");
-      exit(EXIT_FAILURE);
+      exit_code += EXIT_FAILURE;
     }
   }
 
-  if (!is_set_length || !is_set_dgemms) {
+  if (!is_set_length || !is_set_dgemms || exit_code || help) {
     print_help();
-    exit(EXIT_FAILURE);
+    exit(exit_code > 0);
   }
 }
 
