@@ -4,8 +4,8 @@
 #include <x86intrin.h>
 
 void copy_transpose(int length, double *matrix, double *transpose) {
-  for (int i = 0; i < length; ++i)
-    for (int j = 0; j < length; ++j)
+  for (int i = 0; i < length; i++)
+    for (int j = 0; j < length; j++)
       transpose[i + j * length] = matrix[j + i * length];
 }
 
@@ -20,8 +20,8 @@ void transpose_matrix(int length, double *matrix) {
 }
 
 void dgemm_simple(int length, double *a, double *b, double *c) {
-  for (int i = 0; i < length; ++i)
-    for (int j = 0; j < length; ++j)
+  for (int i = 0; i < length; i++)
+    for (int j = 0; j < length; j++)
       for (int k = 0; k < length; k++)
         c[i * length + j] += a[i + k * length] * b[k + j * length];
 }
@@ -60,8 +60,8 @@ void dgemm_transpose(int length, double *a, double *b, double *c) {
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  for (int i = 0; i < length; ++i)
-    for (int j = 0; j < length; ++j)
+  for (int i = 0; i < length; i++)
+    for (int j = 0; j < length; j++)
       for (int k = 0; k < length; k++)
         c[i * length + j] += at[i * length + k] * b[k + j * length];
 
@@ -113,21 +113,21 @@ void dgemm_simd_manual(int length, double *a, double *b, double *c) {
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  int i = 0;
-  for (; i < length - SIMD_MANUAL_QT_DOUBLE; i += SIMD_MANUAL_QT_DOUBLE) {
-    for (int j = 0; j < length; j++)
-      for (int k = 0; k < length; k++) {
-        c[(i + 0) * length + j] += at[(i + 0) * length + k] * b[k + j * length];
-        c[(i + 1) * length + j] += at[(i + 1) * length + k] * b[k + j * length];
-        c[(i + 2) * length + j] += at[(i + 2) * length + k] * b[k + j * length];
-        c[(i + 3) * length + j] += at[(i + 3) * length + k] * b[k + j * length];
-      }
-  }
+  for (int i = 0; i < length; i++) {
+    int j = 0;
 
-  for (; i < length; ++i)
-    for (int j = 0; j < length; ++j)
+    for (; j < length - SIMD_MANUAL_QT_DOUBLE; j += SIMD_MANUAL_QT_DOUBLE)
+      for (int k = 0; k < length; k++) {
+        c[i * length + j + 0] += at[i * length + k] * b[k + (j + 0) * length];
+        c[i * length + j + 1] += at[i * length + k] * b[k + (j + 1) * length];
+        c[i * length + j + 2] += at[i * length + k] * b[k + (j + 2) * length];
+        c[i * length + j + 3] += at[i * length + k] * b[k + (j + 3) * length];
+      }
+
+    for (; j < length; j++)
       for (int k = 0; k < length; k++)
         c[i * length + j] += at[i * length + k] * b[k + j * length];
+  }
 
   free(at);
 }
