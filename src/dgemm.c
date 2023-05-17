@@ -1,4 +1,5 @@
 #include "dgemm.h"
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <x86intrin.h>
@@ -42,6 +43,16 @@ void block_simple_unroll(int length, int si, int sj, int sk, double *a,
 }
 
 void dgemm_simple_unroll_blocking(int length, double *a, double *b, double *c) {
+  for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+    for (int si = 0; si < length; si += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_simple_unroll(length, si, sj, sk, a, b, c);
+}
+
+void dgemm_simple_unroll_blocking_parallel(int length, double *a, double *b,
+                                           double *c) {
+  omp_set_num_threads(length / BLOCK_SIZE);
+#pragma omp parallel for
   for (int sj = 0; sj < length; sj += BLOCK_SIZE)
     for (int si = 0; si < length; si += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -95,6 +106,21 @@ void dgemm_transpose_unroll_blocking(int length, double *a, double *b,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_transpose_unroll(length, si, sj, sk, at, b, c);
+
+  free(at);
+}
+
+void dgemm_transpose_unroll_blocking_parallel(int length, double *a, double *b,
+                                              double *c) {
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
+  copy_transpose(length, a, at);
+
+  omp_set_num_threads(length / BLOCK_SIZE);
+#pragma omp parallel for
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -184,6 +210,21 @@ void dgemm_simd_manual_unroll_blocking(int length, double *a, double *b,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_simd_manual_unroll(length, si, sj, sk, at, b, c);
+
+  free(at);
+}
+
+void dgemm_simd_manual_unroll_blocking_parallel(int length, double *a,
+                                                double *b, double *c) {
+  double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
+  copy_transpose(length, a, at);
+
+  omp_set_num_threads(length / BLOCK_SIZE);
+#pragma omp parallel for
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -288,6 +329,16 @@ void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
         block_avx256_unroll(length, si, sj, sk, a, b, c);
 }
 
+void dgemm_avx256_unroll_blocking_parallel(int length, double *a, double *b,
+                                           double *c) {
+  omp_set_num_threads(length / BLOCK_SIZE);
+#pragma omp parallel for
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_avx256_unroll(length, si, sj, sk, a, b, c);
+}
+
 void dgemm_avx512(int length, double *a, double *b, double *c) {
 #if __AVX512F__
   for (int i = 0; i < length; i += AVX512_QT_DOUBLE) {
@@ -378,6 +429,16 @@ void block_avx512_unroll(int length, int si, int sj, int sk, double *a,
 }
 
 void dgemm_avx512_unroll_blocking(int length, double *a, double *b, double *c) {
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_avx512_unroll(length, si, sj, sk, a, b, c);
+}
+
+void dgemm_avx512_unroll_blocking_parallel(int length, double *a, double *b,
+                                           double *c) {
+  omp_set_num_threads(length / BLOCK_SIZE);
+#pragma omp parallel for
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)

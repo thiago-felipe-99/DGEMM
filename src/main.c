@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <math.h>
+#include <omp.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,11 @@ typedef enum {
   simd_manual_unroll_blocking,
   avx256_unroll_blocking,
   avx512_unroll_blocking,
+  simple_unroll_blocking_parallel,
+  transpose_unroll_blocking_parallel,
+  simd_manual_unroll_blocking_parallel,
+  avx256_unroll_blocking_parallel,
+  avx512_unroll_blocking_parallel,
   DGEMM_COUNT
 } dgemm;
 
@@ -45,6 +51,11 @@ const char *dgemm_names[DGEMM_COUNT] = {
     "simd_manual_unroll_blocking",
     "avx256_unroll_blocking",
     "avx512_unroll_blocking",
+    "simple_unroll_blocking_parallel",
+    "transpose_unroll_blocking_parallel",
+    "simd_manual_unroll_blocking_parallel",
+    "avx256_unroll_blocking_parallel",
+    "avx512_unroll_blocking_parallel",
 };
 
 void process_dgemms(char *option, bool dgemms[]) {
@@ -168,8 +179,7 @@ void print_matrix(int length, double *matrix) {
   }
 }
 
-void print_result(dgemm dgemm, int length, clock_t diff) {
-  double seconds = ((double)diff) / CLOCKS_PER_SEC;
+void print_result(dgemm dgemm, int length, double seconds) {
   double mseconds = seconds * 1000;
   double gflops = ((2 * pow(length, 3)) / pow(10, 9));
   printf("%s,%d,%.0f,%.2f\n", dgemm_names[dgemm], length, mseconds,
@@ -237,6 +247,11 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case simd_manual_unroll_blocking:
   case avx256_unroll_blocking:
   case avx512_unroll_blocking:
+  case simple_unroll_blocking_parallel:
+  case transpose_unroll_blocking_parallel:
+  case simd_manual_unroll_blocking_parallel:
+  case avx256_unroll_blocking_parallel:
+  case avx512_unroll_blocking_parallel:
     factor = BLOCK_SIZE;
     break;
   default:
@@ -305,6 +320,21 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
     break;
   case avx512_unroll_blocking:
     dgemm_avx512_unroll_blocking(new_length, new_a, new_b, new_c);
+    break;
+  case simple_unroll_blocking_parallel:
+    dgemm_simple_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
+    break;
+  case transpose_unroll_blocking_parallel:
+    dgemm_transpose_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
+    break;
+  case simd_manual_unroll_blocking_parallel:
+    dgemm_simd_manual_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
+    break;
+  case avx256_unroll_blocking_parallel:
+    dgemm_avx256_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
+    break;
+  case avx512_unroll_blocking_parallel:
+    dgemm_avx512_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
     break;
   }
 
@@ -390,9 +420,9 @@ int main(int argc, char *argv[]) {
     if (dgemms[i]) {
       clean_matrix(length, c);
 
-      clock_t start = clock(), diff;
+      double start_time = omp_get_wtime();
       multiply(i, length, a, b, c);
-      diff = clock() - start;
+      double diff = omp_get_wtime() - start_time;
 
       if (show_result)
         print_matrix(length, c);
