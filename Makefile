@@ -19,6 +19,7 @@ dgemm_unroll:
 
 .PHONY: dgemm_blocking
 dgemm_blocking: 
+	gcc  -O3 -fopenmp -march=native -DBLOCK_SIZE=32  -o out/dgemm_blocking_032 src/main.c src/dgemm.c -lm
 	gcc  -O3 -fopenmp -march=native -DBLOCK_SIZE=64  -o out/dgemm_blocking_064 src/main.c src/dgemm.c -lm
 	gcc  -O3 -fopenmp -march=native -DBLOCK_SIZE=128 -o out/dgemm_blocking_128 src/main.c src/dgemm.c -lm
 	gcc  -O3 -fopenmp -march=native -DBLOCK_SIZE=256 -o out/dgemm_blocking_256 src/main.c src/dgemm.c -lm
@@ -30,6 +31,18 @@ clean:
 	rm -fr ./out_csv/*
 	rm -fr ./out_csv/raw/*
 
-.PHONY: csv
-csv: clean all
-	exec scripts/csv.sh ./out
+.PHONY: csv_basic
+csv_basic: dgemm
+	exec scripts/create_csv.sh ./out/dgemm simple,transpose,simd_manual,avx256 '32:1024:32' basic 
+
+.PHONY: csv_unroll
+csv_unroll: dgemm_unroll
+	exec scripts/create_csv.sh './out/dgemm_unroll_*' simple_unroll,transpose_unroll,simd_manual_unroll,avx256_unroll '32:1024:32' unroll  
+                                                                                           
+.PHONY: csv_blocking                                                                       
+csv_blocking: dgemm_blocking                                                                    
+	exec scripts/create_csv.sh './out/dgemm_blocking_*' simple_unroll_blocking,transpose_unroll_blocking,simd_manual_unroll_blocking,avx256_unroll_blocking '32:1024:32' blocking  
+                                                                                                                               
+.PHONY: csv_parallel                                                                                                           
+csv_parallel: dgemm_blocking                                                                                                        
+	exec scripts/create_csv.sh './out/dgemm_blocking_*' simple_unroll_blocking_parallel,transpose_unroll_blocking_parallel,simd_manual_unroll_blocking_parallel,avx256_unroll_blocking_parallel '32:1024:32' parallel  

@@ -151,7 +151,6 @@ int process_loop(char *option, int *loop) {
     exit_code = EXIT_FAILURE;
   }
 
-  printf("Start: %d; End: %d; Step: %d\n", loop[0], loop[1], loop[2]);
   return exit_code;
 }
 
