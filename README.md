@@ -182,6 +182,18 @@ Ver a matriz resultante de cada algoritmo
 ```shell 
 out/dgemm -d alg1,alg2,alg3 -l N -s
 ```
+Ver a matriz resultante de cada algoritmo e a matriz A e B
+```shell 
+out/dgemm -d alg1,alg2,alg3 -l N -m
+```
+Rodar a multiplicação de matrizes em loop com tamanho fixo N
+```shell 
+out/dgemm -d alg1,alg2,alg3 -l N -s -p 'inicio:final:passos'
+```
+Rodar a multiplicação de matrizes em loop com tamanho igual ao índice atual
+```shell 
+out/dgemm -d alg1,alg2,alg3 -s -p 'inicio:final:passos'
+```
 ## Saída do DGEMM
 Saída:
 ```shell
