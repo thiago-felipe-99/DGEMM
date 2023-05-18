@@ -6,7 +6,7 @@
 #endif
 
 #ifndef BLOCK_SIZE
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 64
 #endif
 
 #define AVX256_QT_DOUBLE 4

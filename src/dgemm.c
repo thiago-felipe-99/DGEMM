@@ -157,13 +157,17 @@ void dgemm_simd_manual_unroll(int length, double *a, double *b, double *c) {
     for (int j = 0; j < length; j++) {
       int k = 0;
       for (; k < length - length % (SIMD_MANUAL_QT_DOUBLE * UNROLL);
-           k += SIMD_MANUAL_QT_DOUBLE * UNROLL)
+           k += (SIMD_MANUAL_QT_DOUBLE * UNROLL))
         for (int r = 0; r < UNROLL; r++)
           c[i + j * length] +=
-              at[i * length + k + 0 + r] * b[k + 0 + r + j * length] +
-              at[i * length + k + 1 + r] * b[k + 1 + r + j * length] +
-              at[i * length + k + 2 + r] * b[k + 2 + r + j * length] +
-              at[i * length + k + 3 + r] * b[k + 3 + r + j * length];
+              at[i * length + k + 0 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 0 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 1 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 1 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 2 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 2 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 3 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 3 + r * SIMD_MANUAL_QT_DOUBLE + j * length];
 
       for (; k < length - length % SIMD_MANUAL_QT_DOUBLE;
            k += SIMD_MANUAL_QT_DOUBLE)
@@ -184,13 +188,18 @@ void block_simd_manual_unroll(int length, int si, int sj, int sk, double *at,
                               double *b, double *c) {
   for (int i = si; i < si + BLOCK_SIZE; i++)
     for (int j = sj; j < sj + BLOCK_SIZE; j++)
-      for (int k = sk; k < sk + BLOCK_SIZE; k += SIMD_MANUAL_QT_DOUBLE * UNROLL)
+      for (int k = sk; k < sk + BLOCK_SIZE;
+           k += (SIMD_MANUAL_QT_DOUBLE * UNROLL))
         for (int r = 0; r < UNROLL; r++)
           c[i + j * length] +=
-              at[i * length + k + 0 + r] * b[k + 0 + r + j * length] +
-              at[i * length + k + 1 + r] * b[k + 1 + r + j * length] +
-              at[i * length + k + 2 + r] * b[k + 2 + r + j * length] +
-              at[i * length + k + 3 + r] * b[k + 3 + r + j * length];
+              at[i * length + k + 0 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 0 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 1 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 1 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 2 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 2 + r * SIMD_MANUAL_QT_DOUBLE + j * length] +
+              at[i * length + k + 3 + r * SIMD_MANUAL_QT_DOUBLE] *
+                  b[k + 3 + r * SIMD_MANUAL_QT_DOUBLE + j * length];
 }
 
 void dgemm_simd_manual_unroll_blocking(int length, double *a, double *b,
