@@ -14,6 +14,22 @@
 #define SIMD_MANUAL_QT_DOUBLE 4
 #define ALIGN 64
 
+#if __AVX512__
+#if BLOCK_SIZE % (AVX512_QT_DOUBLE * UNROLL) != 0
+#error BLOCK_SIZE is not a UNROLL * AVX512_QT_DOUBLE multiple
+#endif
+#endif
+
+#if __AVX2__ || __AVX__
+#if BLOCK_SIZE % (AVX256_QT_DOUBLE * UNROLL) != 0
+#error BLOCK_SIZE is not a UNROLL * AVX256_QT_DOUBLE multiple
+#endif
+#endif
+
+#if BLOCK_SIZE % (SIMD_MANUAL_QT_DOUBLE * UNROLL) != 0
+#error BLOCK_SIZE is not a UNROLL * AVX256_QT_DOUBLE multiple
+#endif
+
 void dgemm_simple(int length, double *a, double *b, double *c);
 void dgemm_transpose(int length, double *a, double *b, double *c);
 void dgemm_simd_manual(int length, double *a, double *b, double *c);
