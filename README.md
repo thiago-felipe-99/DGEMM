@@ -139,7 +139,7 @@ for si range N in step BS:
 DGEMM roda Blocking + Unroll simultaneamente
 Como usar:
 ```shell 
-out/dgemm -d <algoritmo_base>_unroll_blocking -l N
+out/dgemm -d <algoritmo_base>_blocking -l N
 ```
 ### Parallel
 Essa técninca permite que que um loop possa rodar em várias threads ao mesmo tempo,
@@ -167,7 +167,7 @@ for si range N in step BS:
 DGEMM roda Blocking + Unroll + Parallel simultaneamente
 Como usar:
 ```shell 
-out/dgemm -d <algoritmo_base>_unroll_blocking_parallel -l N
+out/dgemm -d <algoritmo_base>_parallel -l N
 ```
 ## Argumentos Adicionais
 Rodar vários algoritmos:
