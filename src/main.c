@@ -107,16 +107,15 @@ int process_length(char *option, int *length) {
   return EXIT_SUCCESS;
 }
 
-void print_help() {
-  printf("Usage:...");
-}
+void print_help() { printf("Usage:..."); }
 
 void parse_options(int argc, char *argv[], bool dgemms[], int *length,
-                   bool *random, bool *show_result) {
+                   bool *random, bool *show_result, bool *show_matrices) {
   struct option long_options[] = {{"dgemm", required_argument, NULL, 'd'},
                                   {"length", required_argument, NULL, 'l'},
                                   {"random", no_argument, NULL, 'r'},
                                   {"show-result", no_argument, NULL, 's'},
+                                  {"show-matrices", no_argument, NULL, 'm'},
                                   {"help", no_argument, NULL, 'h'},
                                   {NULL, 0, NULL, 0}};
 
@@ -124,7 +123,7 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
 
   int option, exit_code = EXIT_SUCCESS;
 
-  while ((option = getopt_long(argc, argv, "hd:l:rs", long_options, NULL)) !=
+  while ((option = getopt_long(argc, argv, "d:l:rsmh", long_options, NULL)) !=
          -1) {
     switch (option) {
     case 'd':
@@ -140,6 +139,10 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
       break;
     case 's':
       *show_result = true;
+      break;
+    case 'm':
+      *show_result = true;
+      *show_matrices = true;
       break;
     case 'h':
       help = true;
@@ -178,6 +181,7 @@ void clean_matrix(int length, double *a) {
 }
 
 void print_matrix(int length, double *matrix) {
+  printf("\n");
   for (int i = 0; i < length; i++) {
     printf("| ");
     for (int j = 0; j < length; j++) {
@@ -408,13 +412,14 @@ void check_avx(bool dgemms[DGEMM_COUNT]) {
 int main(int argc, char *argv[]) {
   bool dgemms[DGEMM_COUNT];
   int length = 0;
-  bool random = false, show_result = false;
+  bool random = false, show_result = false, show_matrices = false;
 
   for (int i = 0; i < DGEMM_COUNT; i++) {
     dgemms[i] = false;
   }
 
-  parse_options(argc, argv, dgemms, &length, &random, &show_result);
+  parse_options(argc, argv, dgemms, &length, &random, &show_result,
+                &show_matrices);
 
   check_avx(dgemms);
 
@@ -423,6 +428,11 @@ int main(int argc, char *argv[]) {
   double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
+
+  if(show_matrices) {
+    print_matrix(length, a);
+    print_matrix(length, b);
+  }
 
   for (int i = 0; i < DGEMM_COUNT; i++) {
     if (dgemms[i]) {

@@ -2,7 +2,7 @@
 #define DGEMM_H
 
 #ifndef UNROLL
-#define UNROLL 16
+#define UNROLL 8
 #endif
 
 #ifndef BLOCK_SIZE
