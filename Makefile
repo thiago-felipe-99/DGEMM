@@ -31,22 +31,22 @@ clean:
 	rm -fr ./out_csv/*
 	rm -fr ./out_csv/raw/*
 
-.PHONY: csv_all
-csv_all: dgemm
-	exec scripts/create_csv.sh ./out/dgemm '32:1024:32' basic simple,transpose,simd_manual,avx256,simple_unroll,transpose_unroll,simd_manual_unroll,avx256_unroll,simple_blocking,transpose_blocking,simd_manual_blocking,avx256_blocking,simple_parallel,transpose_parallel,simd_manual_parallel,avx256_parallel
-
 .PHONY: csv_basic
-csv_basic: dgemm
-	exec scripts/create_csv.sh ./out/dgemm '32:1024:32' basic simple,transpose,simd_manual,avx256
+csv_basic:prepare dgemm
+	exec scripts/create_csv.sh ./out/dgemm '32:2048:32' basic true simple,transpose,simd_manual,avx256
+
+.PHONY: csv_all
+csv_all:prepare dgemm
+	exec scripts/create_csv.sh ./out/dgemm '32:2048:32' all true simple,transpose,simd_manual,avx256,simple_unroll,transpose_unroll,simd_manual_unroll,avx256_unroll,simple_blocking,transpose_blocking,simd_manual_blocking,avx256_blocking,simple_parallel,transpose_parallel,simd_manual_parallel,avx256_parallel
 
 .PHONY: csv_unroll
-csv_unroll: dgemm_unroll
-	exec scripts/create_csv.sh './out/dgemm_unroll_*' '32:1024:32' unroll simple_unroll,transpose_unroll,simd_manual_unroll,avx256_unroll
+csv_unroll:prepare dgemm_unroll
+	exec scripts/create_csv.sh './out/dgemm_unroll_*' '32:2048:32' unroll true simple_unroll,transpose_unroll,simd_manual_unroll,avx256_unroll
                                                                                            
 .PHONY: csv_blocking                                                                       
-csv_blocking: dgemm_blocking                                                                    
-	exec scripts/create_csv.sh './out/dgemm_blocking_*' '32:1024:32' blocking simple_blocking,transpose_blocking,simd_manual_blocking,avx256_blocking
+csv_blocking:prepare dgemm_blocking                                                                    
+	exec scripts/create_csv.sh './out/dgemm_blocking_*' '32:2048:32' blocking true simple_blocking,transpose_blocking,simd_manual_blocking,avx256_blocking
                                                                                                                                
 .PHONY: csv_parallel                                                                                                           
-csv_parallel: dgemm_blocking                                                                                                        
-	exec scripts/create_csv.sh './out/dgemm_blocking_*' '32:1024:32' parallel simple_parallel,transpose_parallel,simd_manual_parallel,avx256_parallel
+csv_parallel:prepare dgemm                                                                                                       
+	exec scripts/create_csv.sh ./out/dgemm '32:4096:32' parallel true simple_parallel,transpose_parallel,simd_manual_parallel,avx256_parallel

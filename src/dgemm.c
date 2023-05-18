@@ -50,8 +50,8 @@ void dgemm_simple_unroll_blocking(int length, double *a, double *b, double *c) {
 
 void dgemm_simple_unroll_blocking_parallel(int length, double *a, double *b,
                                            double *c) {
-  omp_set_num_threads(length / BLOCK_SIZE);
-#pragma omp parallel for
+
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int sj = 0; sj < length; sj += BLOCK_SIZE)
     for (int si = 0; si < length; si += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -117,8 +117,7 @@ void dgemm_transpose_unroll_blocking_parallel(int length, double *a, double *b,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  omp_set_num_threads(length / BLOCK_SIZE);
-#pragma omp parallel for
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -220,8 +219,7 @@ void dgemm_simd_manual_unroll_blocking_parallel(int length, double *a,
   double *at = aligned_alloc(ALIGN, length * length * sizeof(double));
   copy_transpose(length, a, at);
 
-  omp_set_num_threads(length / BLOCK_SIZE);
-#pragma omp parallel for
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -328,8 +326,8 @@ void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
 
 void dgemm_avx256_unroll_blocking_parallel(int length, double *a, double *b,
                                            double *c) {
-  omp_set_num_threads(length / BLOCK_SIZE);
-#pragma omp parallel for
+
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
@@ -434,8 +432,8 @@ void dgemm_avx512_unroll_blocking(int length, double *a, double *b, double *c) {
 
 void dgemm_avx512_unroll_blocking_parallel(int length, double *a, double *b,
                                            double *c) {
-  omp_set_num_threads(length / BLOCK_SIZE);
-#pragma omp parallel for
+
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)

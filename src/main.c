@@ -158,13 +158,14 @@ void print_help() { printf("Usage:..."); }
 
 void parse_options(int argc, char *argv[], bool dgemms[], int *length,
                    int loop[3], bool *random, bool *show_result,
-                   bool *show_matrices) {
+                   bool *show_matrices, bool *parallel) {
   struct option long_options[] = {{"dgemm", required_argument, NULL, 'd'},
                                   {"length", required_argument, NULL, 'l'},
-                                  {"loop", required_argument, NULL, 'p'},
+                                  {"loop", required_argument, NULL, 'o'},
                                   {"random", no_argument, NULL, 'r'},
                                   {"show-result", no_argument, NULL, 's'},
                                   {"show-matrices", no_argument, NULL, 'm'},
+                                  {"parallel", no_argument, NULL, 'm'},
                                   {"help", no_argument, NULL, 'h'},
                                   {NULL, 0, NULL, 0}};
 
@@ -172,8 +173,8 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
 
   int option, exit_code = EXIT_SUCCESS;
 
-  while ((option = getopt_long(argc, argv, "d:l:p:rsmh", long_options, NULL)) !=
-         -1) {
+  while ((option = getopt_long(argc, argv, "d:l:o:rsmph", long_options,
+                               NULL)) != -1) {
     switch (option) {
     case 'd':
       exit_code += process_dgemms(optarg, dgemms);
@@ -183,7 +184,7 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
       exit_code += process_length(optarg, length);
       is_set_length = true;
       break;
-    case 'p':
+    case 'o':
       exit_code += process_loop(optarg, loop);
       is_set_length = true;
       break;
@@ -196,6 +197,9 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
     case 'm':
       *show_result = true;
       *show_matrices = true;
+      break;
+    case 'p':
+      *parallel = true;
       break;
     case 'h':
       help = true;
@@ -463,10 +467,9 @@ void check_avx(bool dgemms[DGEMM_COUNT]) {
 }
 
 void run_dgemm(bool dgemms[DGEMM_COUNT], int length, bool random,
-               bool show_result, bool show_matrices) {
+               bool show_result, bool show_matrices, bool parallel) {
   double *a = aligned_alloc(ALIGN, length * length * sizeof(double));
   double *b = aligned_alloc(ALIGN, length * length * sizeof(double));
-  double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
 
@@ -475,8 +478,34 @@ void run_dgemm(bool dgemms[DGEMM_COUNT], int length, bool random,
     print_matrix(length, b);
   }
 
-  for (int i = 0; i < DGEMM_COUNT; i++) {
+  int i = 0;
+
+#pragma omp parallel for num_threads(                                          \
+        simple_unroll_blocking_parallel) if (parallel)
+  for (i = 0; i < simple_unroll_blocking_parallel; i++) {
     if (dgemms[i]) {
+      double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
+
+      clean_matrix(length, c);
+
+      double start_time = omp_get_wtime();
+      multiply(i, length, a, b, c);
+      double diff = omp_get_wtime() - start_time;
+
+      if (show_result)
+        print_matrix(length, c);
+
+      print_result(i, length, diff);
+
+      free(c);
+    }
+  }
+
+  double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
+
+  for (; i < DGEMM_COUNT; i++) {
+    if (dgemms[i]) {
+
       clean_matrix(length, c);
 
       double start_time = omp_get_wtime();
@@ -499,27 +528,28 @@ int main(int argc, char *argv[]) {
   bool dgemms[DGEMM_COUNT];
   int loop[3] = {0, 0, 0};
   int length = 0;
-  bool random = false, show_result = false, show_matrices = false;
+  bool random = false, show_result = false, show_matrices = false,
+       parallel = false;
 
   for (int i = 0; i < DGEMM_COUNT; i++) {
     dgemms[i] = false;
   }
 
   parse_options(argc, argv, dgemms, &length, loop, &random, &show_result,
-                &show_matrices);
+                &show_matrices, &parallel);
 
   check_avx(dgemms);
 
   if (loop[0] == 0) {
-    run_dgemm(dgemms, length, random, show_result, show_result);
+    run_dgemm(dgemms, length, random, show_result, show_result, parallel);
   } else {
     if (length > 0) {
       for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
-        run_dgemm(dgemms, length, random, show_result, show_result);
+        run_dgemm(dgemms, length, random, show_result, show_result, parallel);
       }
     } else {
       for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
-        run_dgemm(dgemms, i, random, show_result, show_result);
+        run_dgemm(dgemms, i, random, show_result, show_result, parallel);
       }
     }
   }
