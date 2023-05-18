@@ -93,12 +93,12 @@ int process_length(char *option, int *length) {
   long int_val = strtol(option, &endptr, 10);
 
   if (errno != 0 || *endptr != '\0') {
-    fprintf(stderr, "Error: Invalid input\n");
+    fprintf(stderr, "Error: Invalid length\n");
     return EXIT_FAILURE;
   }
 
-  if (int_val < INT_MIN || int_val > INT_MAX) {
-    fprintf(stderr, "Error: Input out of range\n");
+  if (int_val <= 0 || int_val > INT_MAX) {
+    fprintf(stderr, "Error: Length out of range\n");
     return EXIT_FAILURE;
   }
 
@@ -107,12 +107,62 @@ int process_length(char *option, int *length) {
   return EXIT_SUCCESS;
 }
 
+int process_loop(char *option, int *loop) {
+  loop[0] = 1;
+  loop[1] = 10;
+  loop[2] = 1;
+
+  int exit_code = EXIT_SUCCESS;
+  int i = 0;
+
+  char *token;
+  const char delimiter[] = ":";
+  char *endptr;
+
+  token = strtok(option, delimiter);
+  while (token != NULL) {
+    if (i >= 3) {
+      fprintf(stderr, "Error: Invalid loop '%s'\n", option);
+      exit_code = EXIT_FAILURE;
+      break;
+    }
+
+    errno = 0;
+    long int_val = strtol(token, &endptr, 10);
+
+    if (errno != 0 || *endptr != '\0') {
+      fprintf(stderr, "Error: Invalid loop '%s'\n", option);
+      exit_code = EXIT_FAILURE;
+    }
+
+    if (int_val <= 0 || int_val > INT_MAX) {
+      fprintf(stderr, "Error: Invalid loop '%s'\n", option);
+      exit_code = EXIT_FAILURE;
+    }
+
+    loop[i] = (int)int_val;
+
+    token = strtok(NULL, delimiter);
+    i++;
+  }
+
+  if (loop[0] > loop[1]) {
+    fprintf(stderr, "Error: Invalid loop '%s'\n", option);
+    exit_code = EXIT_FAILURE;
+  }
+
+  printf("Start: %d; End: %d; Step: %d\n", loop[0], loop[1], loop[2]);
+  return exit_code;
+}
+
 void print_help() { printf("Usage:..."); }
 
 void parse_options(int argc, char *argv[], bool dgemms[], int *length,
-                   bool *random, bool *show_result, bool *show_matrices) {
+                   int loop[3], bool *random, bool *show_result,
+                   bool *show_matrices) {
   struct option long_options[] = {{"dgemm", required_argument, NULL, 'd'},
                                   {"length", required_argument, NULL, 'l'},
+                                  {"loop", required_argument, NULL, 'p'},
                                   {"random", no_argument, NULL, 'r'},
                                   {"show-result", no_argument, NULL, 's'},
                                   {"show-matrices", no_argument, NULL, 'm'},
@@ -123,7 +173,7 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
 
   int option, exit_code = EXIT_SUCCESS;
 
-  while ((option = getopt_long(argc, argv, "d:l:rsmh", long_options, NULL)) !=
+  while ((option = getopt_long(argc, argv, "d:l:p:rsmh", long_options, NULL)) !=
          -1) {
     switch (option) {
     case 'd':
@@ -132,6 +182,10 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
       break;
     case 'l':
       exit_code += process_length(optarg, length);
+      is_set_length = true;
+      break;
+    case 'p':
+      exit_code += process_loop(optarg, loop);
       is_set_length = true;
       break;
     case 'r':
@@ -152,7 +206,7 @@ void parse_options(int argc, char *argv[], bool dgemms[], int *length,
     }
   }
 
-  if (!is_set_length || !is_set_dgemms || exit_code || help) {
+  if ((!is_set_length && loop[0] == 0) || !is_set_dgemms || exit_code || help) {
     print_help();
     exit(exit_code > 0);
   }
@@ -409,27 +463,15 @@ void check_avx(bool dgemms[DGEMM_COUNT]) {
 #endif
 }
 
-int main(int argc, char *argv[]) {
-  bool dgemms[DGEMM_COUNT];
-  int length = 0;
-  bool random = false, show_result = false, show_matrices = false;
-
-  for (int i = 0; i < DGEMM_COUNT; i++) {
-    dgemms[i] = false;
-  }
-
-  parse_options(argc, argv, dgemms, &length, &random, &show_result,
-                &show_matrices);
-
-  check_avx(dgemms);
-
+void run_dgemm(bool dgemms[DGEMM_COUNT], int length, bool random,
+               bool show_result, bool show_matrices) {
   double *a = aligned_alloc(ALIGN, length * length * sizeof(double));
   double *b = aligned_alloc(ALIGN, length * length * sizeof(double));
   double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
 
   generate_matrices(length, a, b, random);
 
-  if(show_matrices) {
+  if (show_matrices) {
     print_matrix(length, a);
     print_matrix(length, b);
   }
@@ -452,6 +494,36 @@ int main(int argc, char *argv[]) {
   free(a);
   free(b);
   free(c);
+}
+
+int main(int argc, char *argv[]) {
+  bool dgemms[DGEMM_COUNT];
+  int loop[3] = {0, 0, 0};
+  int length = 0;
+  bool random = false, show_result = false, show_matrices = false;
+
+  for (int i = 0; i < DGEMM_COUNT; i++) {
+    dgemms[i] = false;
+  }
+
+  parse_options(argc, argv, dgemms, &length, loop, &random, &show_result,
+                &show_matrices);
+
+  check_avx(dgemms);
+
+  if (loop[0] == 0) {
+    run_dgemm(dgemms, length, random, show_result, show_result);
+  } else {
+    if (length > 0) {
+      for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
+        run_dgemm(dgemms, length, random, show_result, show_result);
+      }
+    } else {
+      for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
+        run_dgemm(dgemms, i, random, show_result, show_result);
+      }
+    }
+  }
 
   return 0;
 }
