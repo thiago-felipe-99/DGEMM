@@ -20,26 +20,25 @@ void dgemm_simple(int length, double *a, double *b, double *c) {
 void dgemm_simple_unroll(int length, double *a, double *b, double *c) {
   for (int i = 0; i < length; i++) {
     int j = 0;
-    for (; j < length - length % UNROLL; j += UNROLL)
-      for (int k = 0; k < length; k++)
+    for (; j < length; j++) {
+      int k = 0;
+      for (; k < length - length % UNROLL; k += UNROLL)
         for (int r = 0; r < UNROLL; r++)
-          c[i + (j + r) * length] +=
-              a[i + k * length] * b[k + (j + r) * length];
+          c[i + j * length] += a[i + (k + r) * length] * b[k + r + j * length];
 
-    for (; j < length; j++)
-      for (int k = 0; k < length; k++)
+      for (; k < length; k++)
         c[i + j * length] += a[i + k * length] * b[k + j * length];
+    }
   }
 }
 
 void block_simple_unroll(int length, int si, int sj, int sk, double *a,
                          double *b, double *c) {
   for (int i = si; i < si + BLOCK_SIZE; i++)
-    for (int j = sj; j < sj + BLOCK_SIZE; j += UNROLL)
-      for (int k = sk; k < sk + BLOCK_SIZE; k++)
+    for (int j = sj; j < sj + BLOCK_SIZE; j++)
+      for (int k = sk; k < sk + BLOCK_SIZE; k += UNROLL)
         for (int r = 0; r < UNROLL; r++)
-          c[i + (j + r) * length] +=
-              a[i + k * length] * b[k + (j + r) * length];
+          c[i + j * length] += a[i + (k + r) * length] * b[k + r + j * length];
 }
 
 void dgemm_simple_unroll_blocking(int length, double *a, double *b, double *c) {
@@ -77,15 +76,15 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
 
   for (int i = 0; i < length; i++) {
     int j = 0;
-    for (; j < length - length % UNROLL; j += UNROLL)
-      for (int k = 0; k < length; k++)
+    for (; j < length; j++) {
+      int k = 0;
+      for (; k < length - length % UNROLL; k += UNROLL)
         for (int r = 0; r < UNROLL; r++)
-          c[i + (j + r) * length] +=
-              at[i * length + k] * b[k + (j + r) * length];
+          c[i + j * length] += at[i * length + k + r] * b[k + r + j * length];
 
-    for (; j < length; j++)
-      for (int k = 0; k < length; k++)
+      for (; k < length; k++)
         c[i + j * length] += at[i * length + k] * b[k + j * length];
+    }
   }
 
   free(at);
@@ -94,11 +93,10 @@ void dgemm_transpose_unroll(int length, double *a, double *b, double *c) {
 void block_transpose_unroll(int length, int si, int sj, int sk, double *at,
                             double *b, double *c) {
   for (int i = si; i < si + BLOCK_SIZE; i++)
-    for (int j = sj; j < sj + BLOCK_SIZE; j += UNROLL)
-      for (int k = sk; k < sk + BLOCK_SIZE; k++)
+    for (int j = sj; j < sj + BLOCK_SIZE; j++)
+      for (int k = sk; k < sk + BLOCK_SIZE; k += UNROLL)
         for (int r = 0; r < UNROLL; r++)
-          c[i + (j + r) * length] +=
-              at[i * length + k] * b[k + (j + r) * length];
+          c[i + j * length] += at[i * length + k + r] * b[k + r + j * length];
 }
 
 void dgemm_transpose_unroll_blocking(int length, double *a, double *b,
