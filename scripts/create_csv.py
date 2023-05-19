@@ -12,16 +12,16 @@ info = cpuinfo.get_cpu_info()
 AVX256_ENABLE = "avx2" in info["flags"] or "avx" in info["flags"]
 AVX512_ENABLE = "avx512" in info["flags"]
 
-NUM_PROCESS = 1
 NUM_BUILDS = 10
-
-DEFAULT_NAME = "./out/name"
-DEFAULT_LOOP = "32:2048:32"
-DEFAULT_UNROLL = 8
-DEFAULT_BLOCK_SIZE = 32
 AVX256_QT_DOUBLE = 4
 AVX512_QT_DOUBLE = 8
 SIMD_MANUAL_QT_DOUBLE = 8
+
+DEFAULT_NAME = "./out/name"
+DEFAULT_UNROLL = 8
+DEFAULT_BLOCK_SIZE = 32
+DEFAULT_NUM_PROCESS = 1
+DEFAULT_LOOP = "32:1024:32"
 
 RANGE_ROUNDS = 5
 MAX_ROUNDS = 3
@@ -31,6 +31,7 @@ ERROR_MESSAGE = 1
 INFO_MESSAGE = 3
 STATUS_MESSAGE = 4
 DEBUG_MESSAGE = 5
+DEFAULT_LOG_LEVEL = INFO_MESSAGE
 MAX_LOG_LEVEL = INFO_MESSAGE
 
 
@@ -40,8 +41,7 @@ def log(message, level=DEBUG_MESSAGE):
         print(f"{formatted_time} - {message}")
 
 
-def criar_build(name=DEFAULT_NAME, unroll=DEFAULT_UNROLL,
-                block_size=DEFAULT_BLOCK_SIZE):
+def criar_build(name, unroll, block_size):
     command = ["gcc", "-O3", "-fopenmp", "-march=native", "src/main.c",
                "src/dgemm.c", "-o", name, "-DUNROLL="+str(unroll),
                "-DBLOCK_SIZE="+str(block_size), "-lm"]
@@ -49,7 +49,7 @@ def criar_build(name=DEFAULT_NAME, unroll=DEFAULT_UNROLL,
     subprocess.run(command, check=True)
 
 
-def rodar_amostra(name=DEFAULT_NAME, algs="simple"):
+def rodar_amostra(name, algs):
     command = [name, "-d", algs, "-o", "32:512:32", "-p"]
 
     result = subprocess.run(
@@ -75,8 +75,8 @@ def rodar_amostra(name=DEFAULT_NAME, algs="simple"):
     return averages
 
 
-def rodar_teste(name=DEFAULT_NAME, algs="simple"):
-    command = [name, "-d", algs, "-o", DEFAULT_LOOP, "-p"]
+def rodar_build(name, algs, loop):
+    command = [name, "-d", algs, "-o", loop, "-p"]
 
     result = subprocess.run(
         command, capture_output=True, text=True, check=True)
@@ -95,15 +95,7 @@ def rodar_teste(name=DEFAULT_NAME, algs="simple"):
     return averages
 
 
-def achar_melhor_unroll():
-    algs = "simple_unroll,transpose_unroll,simd_manual_unroll"
-
-    if AVX256_ENABLE:
-        algs += ",avx256_unroll"
-
-    if AVX512_ENABLE:
-        algs += ",avx512_unroll"
-
+def achar_melhor_unroll(algs):
     melhores_unrolls = {}
 
     for i in range(RANGE_ROUNDS):
@@ -148,19 +140,14 @@ def achar_melhor_unroll():
     return max(melhores_unrolls, key=melhores_unrolls.get)
 
 
-def achar_melhor_block_size(unroll):
-    algs = "simple_blocking,transpose_blocking,simd_manual_blocking"
-
-    if AVX256_ENABLE:
-        algs += ",avx256_blocking"
-    if AVX512_ENABLE:
-        algs += ",avx512_blocking"
-
+def achar_melhor_block_size(unroll, algs):
     melhores_block_size = {}
 
     for i in range(RANGE_ROUNDS):
         log(
-            f"inicializando amostra de block size, rounding: {i}", STATUS_MESSAGE)
+            f"inicializando amostra de block size, rounding: {i}",
+            STATUS_MESSAGE
+        )
 
         min_block_size = unroll
         current = unroll
@@ -231,8 +218,7 @@ def achar_melhor_block_size(unroll):
     return max(melhores_block_size, key=melhores_block_size.get)
 
 
-def rodar_dgemm(indice, unroll=DEFAULT_UNROLL, block_size=DEFAULT_BLOCK_SIZE):
-
+def rodar_dgemm_thread(indice, num_process, unroll, block_size, loop):
     algs = "simple,transpose,simd_manual,simple_unroll,transpose_unroll,simd_manual_unroll,simple_blocking,transpose_blocking,simd_manual_blocking,simple_parallel,transpose_parallel,simd_manual_parallel"
 
     if AVX256_ENABLE:
@@ -241,32 +227,36 @@ def rodar_dgemm(indice, unroll=DEFAULT_UNROLL, block_size=DEFAULT_BLOCK_SIZE):
     if AVX512_ENABLE:
         algs += ",avx512,avx512_unroll,avx512_blocking,avx512_parallel"
 
-    if indice < NUM_PROCESS:
+    if indice < num_process:
         time.sleep(indice*120)
 
-    log(f"inicializando build, rounding: {indice}", INFO_MESSAGE)
+    log(f"build {indice} inicializado", INFO_MESSAGE)
 
     start_time = time.time()
     name = "./out/dgemm"
     criar_build(name=name, unroll=unroll, block_size=block_size)
-    result = rodar_teste(name, algs)
-    elapsed_time = time.time() - start_time
+    result = rodar_build(name, algs, loop)
+    diff_time = (time.time() - start_time)*1000
 
     log(
-        f"build finalizado, tempo de execução: {elapsed_time*1000:.0f}ms . Rounding: {indice}", INFO_MESSAGE)
+        f"build {indice} finalizado, tempo de execução: {diff_time:.0f}ms",
+        INFO_MESSAGE
+    )
 
     return result
 
 
-def rodar_todas_dgemm(unroll=DEFAULT_UNROLL, block_size=DEFAULT_BLOCK_SIZE):
-    dgemms = [(i, unroll, block_size) for i in range(NUM_BUILDS)]
+def rodar_todas_dgemm(unroll, block_size, loop, num_process, filename):
+    dgemms = [(i, num_process, unroll, block_size, loop)
+              for i in range(NUM_BUILDS)]
     results = []
     final = {}
 
     log(f"Rodando DGEMM com UNROLL={unroll} e BLOCK_SIZE={block_size}")
 
-    with multiprocessing.Pool(processes=NUM_PROCESS) as pool:
-        workes = [pool.apply_async(rodar_dgemm, dgemm) for dgemm in dgemms]
+    with multiprocessing.Pool(processes=num_process) as pool:
+        workes = [pool.apply_async(rodar_dgemm_thread, dgemm)
+                  for dgemm in dgemms]
         results = [result.get() for result in workes]
 
     for result in results:
@@ -293,36 +283,70 @@ def rodar_todas_dgemm(unroll=DEFAULT_UNROLL, block_size=DEFAULT_BLOCK_SIZE):
             ms_avg = line["ms_avg"]
             saida += f"{alg_name},{line_number},{ms_avg},{gflops_avg}\n"
 
-    with open("./out_csv/dgemm.csv", "w") as file:
+    with open(filename, "w", encoding="utf-8") as file:
         file.write(saida)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-l", "--log", type=int, help="Especificar nível do log")
-parser.add_argument("-u", "--unroll", type=int, help="Especificar UNROLL")
-parser.add_argument("-b", "--block-size", type=int,
-                    help="Especificar BLOCK_SIZE")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-u", "--unroll", type=int, help="Especificar UNROLL")
+    parser.add_argument("-b", "--block-size", default=DEFAULT_NUM_PROCESS,
+                        type=int, help="Especificar BLOCK_SIZE")
+    parser.add_argument("-o", "--limit-loop", default=1024, type=int,
+                        help="Especificar o limite do loop")
+    parser.add_argument("-p", "--process", default=DEFAULT_NUM_PROCESS,
+                        type=int, help="Quantidade de processo paralelos")
+    parser.add_argument("-f", "--file",  default="./out_csv/dgemm.csv",
+                        type=str, help="Saída do arquivo csv gerado")
+    parser.add_argument("-l", "--log", type=int, default=DEFAULT_LOG_LEVEL,
+                        help="Especificar nível do log")
 
-argmunets = parser.parse_args()
-if argmunets.log:
+    argmunets = parser.parse_args()
+
+    global MAX_LOG_LEVEL
     MAX_LOG_LEVEL = argmunets.log
 
-if argmunets.unroll:
-    UNROLL = argmunets.unroll
-else:
-    log("Achando melhor UNROLL", INFO_MESSAGE)
-    UNROLL = achar_melhor_unroll()
-    log(f"Melhor UNROLL {UNROLL}", INFO_MESSAGE)
+    if argmunets.unroll:
+        unroll = argmunets.unroll
+    else:
+        algs = "simple_unroll,transpose_unroll,simd_manual_unroll"
 
-if argmunets.block_size:
-    BLOCK_SIZE = argmunets.block_size
-else:
-    log("Achando melhor BLOCK_SIZE", INFO_MESSAGE)
-    BLOCK_SIZE = achar_melhor_block_size(UNROLL)
-    log(f"Melhor BLOCK_SIZE {BLOCK_SIZE}", INFO_MESSAGE)
+        if AVX256_ENABLE:
+            algs += ",avx256_unroll"
+        if AVX512_ENABLE:
+            algs += ",avx512_unroll"
 
-start_time = time.time()
-rodar_todas_dgemm(UNROLL, BLOCK_SIZE)
-elapsed_time = time.time() - start_time
+        log("Achando melhor UNROLL", INFO_MESSAGE)
+        unroll = achar_melhor_unroll(algs)
+        log(f"Melhor UNROLL {unroll}", INFO_MESSAGE)
 
-log(f"todos builds finalizados, tempo de execução: {elapsed_time*1000:.0f}ms", INFO_MESSAGE)
+    if argmunets.block_size:
+        block_size = argmunets.block_size
+    else:
+        algs = "simple_blocking,transpose_blocking,simd_manual_blocking"
+
+        if AVX256_ENABLE:
+            algs += ",avx256_blocking"
+        if AVX512_ENABLE:
+            algs += ",avx512_blocking"
+
+        log("Achando melhor BLOCK_SIZE", INFO_MESSAGE)
+        block_size = achar_melhor_block_size(unroll, algs)
+        log(f"Melhor BLOCK_SIZE {block_size}", INFO_MESSAGE)
+
+    loop = f"32:{argmunets.limit_loop}:32"
+    num_process = argmunets.process
+    file = argmunets.file
+
+    start_time = time.time()
+    rodar_todas_dgemm(unroll, block_size, loop, num_process, file)
+    diff_time = (time.time() - start_time)*1000
+
+    log(
+        f"todos builds finalizados, tempo de execução: {diff_time:.0f}ms",
+        INFO_MESSAGE
+    )
+
+
+if __name__ == "__main__":
+    main()
