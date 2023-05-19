@@ -15,15 +15,15 @@ csv_all:
 
 .PHONY: csv_1024
 csv_1024: 
-	./scripts/create_csv.py -u 8 -b 32 -o 1024 -f dgemm.1024.csv
+	./scripts/create_csv.py -u 8 -b 32 -o 1024 -f ./out/dgemm.1024.csv
 
 .PHONY: csv
 csv_2048: 
-	./scripts/create_csv.py -u 8 -b 32 -o 2048 -f dgemm.2048.csv
+	./scripts/create_csv.py -u 8 -b 32 -o 2048 -f ./out/dgemm.2048.csv
 
 .PHONY: csv
 csv_4096: 
-	./scripts/create_csv.py -u 8 -b 32 -o 4096 -f dgemm.4096.csv
+	./scripts/create_csv.py -u 8 -b 32 -o 4096 -f ./out/dgemm.4096.csv
 
 .PHONY: clean
 clean:

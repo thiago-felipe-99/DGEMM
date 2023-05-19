@@ -2,11 +2,11 @@
 # pylint: disable=C0111
 import argparse
 import datetime
+import multiprocessing
 import subprocess
 import time
 
 import cpuinfo
-from cpuinfo.cpuinfo import multiprocessing
 
 info = cpuinfo.get_cpu_info()
 AVX256_ENABLE = "avx2" in info["flags"] or "avx" in info["flags"]
@@ -249,65 +249,69 @@ def rodar_dgemm_thread(indice, num_process, unroll, block_size, loop):
 def rodar_todas_dgemm(unroll, block_size, loop, num_process, filename):
     dgemms = [(i, num_process, unroll, block_size, loop)
               for i in range(NUM_BUILDS)]
-    results = []
-    final = {}
+    csvs = []
+    result = {}
 
     log(f"Rodando DGEMM com UNROLL={unroll} e BLOCK_SIZE={block_size}")
 
     with multiprocessing.Pool(processes=num_process) as pool:
         workes = [pool.apply_async(rodar_dgemm_thread, dgemm)
                   for dgemm in dgemms]
-        results = [result.get() for result in workes]
+        csvs = [result.get() for result in workes]
 
-    for result in results:
-        for alg_name, averages in result.items():
-            final.setdefault(alg_name, {})
+    for csv in csvs:
+        for alg_name, averages in csv.items():
+            result.setdefault(alg_name, {})
             for line, values in averages.items():
-                final[alg_name].setdefault(line, {
-                    "gflops_sum": 0, "gflops_avg": 0,
-                    "ms_sum": 0, "ms_avg": 0, "count": 0
+                result[alg_name].setdefault(line, {
+                    "gflops_sum": 0, "ms_sum": 0, "count": 0
                 })
-                final[alg_name][line]["gflops_sum"] += values["gflops_sum"]
-                final[alg_name][line]["ms_sum"] += values["ms_sum"]
-                final[alg_name][line]["count"] += 1
-
-    for alg in final.values():
-        for line in alg.values():
-            line["gflops_avg"] = line["gflops_sum"] / line["count"]
-            line["ms_avg"] = line["ms_sum"] / line["count"]
+                result[alg_name][line]["gflops_sum"] += values["gflops_sum"]
+                result[alg_name][line]["ms_sum"] += values["ms_sum"]
+                result[alg_name][line]["count"] += 1
 
     saida = ""
-    for alg_name, alg in final.items():
+    for alg_name, alg in result.items():
         for line_number, line in alg.items():
-            gflops_avg = line["gflops_avg"]
-            ms_avg = line["ms_avg"]
+            gflops_avg = line["gflops_sum"] / line["count"]
+            ms_avg = line["ms_sum"] / line["count"]
             saida += f"{alg_name},{line_number},{ms_avg},{gflops_avg}\n"
 
     with open(filename, "w", encoding="utf-8") as file:
         file.write(saida)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--unroll", type=int, help="Especificar UNROLL")
-    parser.add_argument("-b", "--block-size", default=DEFAULT_NUM_PROCESS,
-                        type=int, help="Especificar BLOCK_SIZE")
-    parser.add_argument("-o", "--limit-loop", default=1024, type=int,
-                        help="Especificar o limite do loop")
-    parser.add_argument("-p", "--process", default=DEFAULT_NUM_PROCESS,
-                        type=int, help="Quantidade de processo paralelos")
-    parser.add_argument("-f", "--file",  default="./out_csv/dgemm.csv",
-                        type=str, help="Saída do arquivo csv gerado")
-    parser.add_argument("-l", "--log", type=int, default=DEFAULT_LOG_LEVEL,
-                        help="Especificar nível do log")
+class CustomHelpFormatter(argparse.HelpFormatter):
+    def add_argument(self, action):
+        if action.option_strings == ["-h", "--help"]:
+            action.help = "Mostra essa mensagem de ajuda e para a execução"
+        super().add_argument(action)
 
-    argmunets = parser.parse_args()
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Faz o build e gera um csv coma média do tempo de execução de todas a DGEMM",
+        formatter_class=CustomHelpFormatter
+    )
+    parser.add_argument("-u", "--unroll", type=int, help="Especifica UNROLL")
+    parser.add_argument("-b", "--block-size", type=int,
+                        help="Especifica BLOCK_SIZE")
+    parser.add_argument("-o", "--limit-loop", default=1024, type=int,
+                        help="Especifica o limite do loop")
+    parser.add_argument("-p", "--process", default=DEFAULT_NUM_PROCESS,
+                        type=int, help="Quantidade de processos paralelos")
+    parser.add_argument("-f", "--file",  default="./out_csv/dgemm.csv",
+                        type=str, help="Caminho do arquivo csv gerado")
+    parser.add_argument("-l", "--log", type=int, default=DEFAULT_LOG_LEVEL,
+                        help="Especifica nível do log")
+
+    arguments = parser.parse_args()
 
     global MAX_LOG_LEVEL
-    MAX_LOG_LEVEL = argmunets.log
+    MAX_LOG_LEVEL = arguments.log
 
-    if argmunets.unroll:
-        unroll = argmunets.unroll
+    if arguments.unroll:
+        unroll = arguments.unroll
     else:
         algs = "simple_unroll,transpose_unroll,simd_manual_unroll"
 
@@ -320,8 +324,8 @@ def main():
         unroll = achar_melhor_unroll(algs)
         log(f"Melhor UNROLL {unroll}", INFO_MESSAGE)
 
-    if argmunets.block_size:
-        block_size = argmunets.block_size
+    if arguments.block_size:
+        block_size = arguments.block_size
     else:
         algs = "simple_blocking,transpose_blocking,simd_manual_blocking"
 
@@ -334,9 +338,9 @@ def main():
         block_size = achar_melhor_block_size(unroll, algs)
         log(f"Melhor BLOCK_SIZE {block_size}", INFO_MESSAGE)
 
-    loop = f"32:{argmunets.limit_loop}:32"
-    num_process = argmunets.process
-    file = argmunets.file
+    loop = f"32:{arguments.limit_loop}:32"
+    num_process = arguments.process
+    file = arguments.file
 
     start_time = time.time()
     rodar_todas_dgemm(unroll, block_size, loop, num_process, file)
