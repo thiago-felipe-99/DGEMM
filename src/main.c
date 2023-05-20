@@ -32,6 +32,7 @@ typedef enum {
   simd_manual_unroll_blocking_parallel,
   avx256_unroll_blocking_parallel,
   avx512_unroll_blocking_parallel,
+  perfect,
   DGEMM_COUNT
 } dgemm;
 
@@ -56,6 +57,7 @@ const char *dgemm_names[DGEMM_COUNT] = {
     "simd_manual_parallel",
     "avx256_parallel",
     "avx512_parallel",
+    "perfect",
 };
 
 int process_dgemms(char *option, bool dgemms[]) {
@@ -321,6 +323,7 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case simd_manual_unroll_blocking_parallel:
   case avx256_unroll_blocking_parallel:
   case avx512_unroll_blocking_parallel:
+  case perfect:
     factor = BLOCK_SIZE;
     break;
   default:
@@ -405,6 +408,8 @@ void multiply(dgemm dgemm, int length, double *a, double *b, double *c) {
   case avx512_unroll_blocking_parallel:
     dgemm_avx512_unroll_blocking_parallel(new_length, new_a, new_b, new_c);
     break;
+  case perfect:
+    dgemm_perfect(new_length, new_a, new_b, new_c);
   }
 
   if (length % factor) {
@@ -480,8 +485,7 @@ void run_dgemm(bool dgemms[DGEMM_COUNT], int length, bool random,
 
   int i = 0;
 
-#pragma omp parallel for num_threads(                                          \
-        simple_unroll_blocking_parallel) if (parallel)
+#pragma omp parallel for if (parallel)
   for (i = 0; i < simple_unroll_blocking_parallel; i++) {
     if (dgemms[i]) {
       double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
@@ -503,7 +507,7 @@ void run_dgemm(bool dgemms[DGEMM_COUNT], int length, bool random,
 
   double *c = aligned_alloc(ALIGN, length * length * sizeof(double));
 
-  for (; i < DGEMM_COUNT; i++) {
+  for (i = simple_unroll_blocking_parallel; i < DGEMM_COUNT; i++) {
     if (dgemms[i]) {
 
       clean_matrix(length, c);
@@ -541,15 +545,15 @@ int main(int argc, char *argv[]) {
   check_avx(dgemms);
 
   if (loop[0] == 0) {
-    run_dgemm(dgemms, length, random, show_result, show_result, parallel);
+    run_dgemm(dgemms, length, random, show_result, show_matrices, parallel);
   } else {
     if (length > 0) {
       for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
-        run_dgemm(dgemms, length, random, show_result, show_result, parallel);
+        run_dgemm(dgemms, length, random, show_result, show_matrices, parallel);
       }
     } else {
       for (int i = loop[0]; i <= loop[1]; i += loop[2]) {
-        run_dgemm(dgemms, i, random, show_result, show_result, parallel);
+        run_dgemm(dgemms, i, random, show_result, show_matrices, parallel);
       }
     }
   }

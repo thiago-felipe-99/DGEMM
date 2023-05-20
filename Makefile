@@ -1,6 +1,3 @@
-.PHONY: all
-all: dgemm dgemm_unroll dgemm_blocking
-
 .PHONY: prepare
 prepare:
 	mkdir -p ./out

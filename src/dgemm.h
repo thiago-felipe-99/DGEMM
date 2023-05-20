@@ -50,5 +50,6 @@ void dgemm_transpose_unroll_blocking_parallel(int length, double *a, double *b, 
 void dgemm_simd_manual_unroll_blocking_parallel(int length, double *a, double *b, double *c);
 void dgemm_avx256_unroll_blocking_parallel(int length, double *a, double *b, double *c);
 void dgemm_avx512_unroll_blocking_parallel(int length, double *a, double *b, double *c);
+void dgemm_perfect(int length, double *a, double *b, double *c);
 
 #endif

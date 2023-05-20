@@ -50,7 +50,6 @@ void dgemm_simple_unroll_blocking(int length, double *a, double *b, double *c) {
 
 void dgemm_simple_unroll_blocking_parallel(int length, double *a, double *b,
                                            double *c) {
-
 #pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int sj = 0; sj < length; sj += BLOCK_SIZE)
     for (int si = 0; si < length; si += BLOCK_SIZE)
@@ -326,12 +325,65 @@ void dgemm_avx256_unroll_blocking(int length, double *a, double *b, double *c) {
 
 void dgemm_avx256_unroll_blocking_parallel(int length, double *a, double *b,
                                            double *c) {
-
 #pragma omp parallel for num_threads(length / BLOCK_SIZE)
   for (int si = 0; si < length; si += BLOCK_SIZE)
     for (int sj = 0; sj < length; sj += BLOCK_SIZE)
       for (int sk = 0; sk < length; sk += BLOCK_SIZE)
         block_avx256_unroll(length, si, sj, sk, a, b, c);
+}
+
+void block_perfect(int length, int si, int sj, int sk, double *a, double *b,
+                   double *c) {
+#if __AVX__ || __AVX2__
+  for (int i = si; i < si + BLOCK_SIZE; i += UNROLL * AVX256_QT_DOUBLE) {
+    for (int j = sj; j < sj + BLOCK_SIZE; j++) {
+      __m256d acc[UNROLL];
+
+      for (int r = 0; r < UNROLL; r++)
+        acc[r] = _mm256_load_pd(c + i + j * length + 0*4 + r * AVX256_QT_DOUBLE);
+
+      for (int k = sk; k < sk + BLOCK_SIZE; k+=4) {
+        __m256d column[4];
+        column[0] = _mm256_broadcast_sd(b + k + 0 + j * length);
+        column[1] = _mm256_broadcast_sd(b + k + 1 + j * length);
+        column[2] = _mm256_broadcast_sd(b + k + 2 + j * length);
+        column[3] = _mm256_broadcast_sd(b + k + 3 + j * length);
+
+        for (int r = 0; r < UNROLL; r++) {
+          __m256d row0 =
+              _mm256_load_pd(a + i + (k + 0) * length + r * AVX256_QT_DOUBLE);
+          __m256d row1 =
+              _mm256_load_pd(a + i + (k + 1) * length + r * AVX256_QT_DOUBLE);
+          __m256d row2 =
+              _mm256_load_pd(a + i + (k + 2) * length + r * AVX256_QT_DOUBLE);
+          __m256d row3 =
+              _mm256_load_pd(a + i + (k + 3) * length + r * AVX256_QT_DOUBLE);
+
+          __m256d mul0 = _mm256_mul_pd(row0, column[0]);
+          __m256d mul1 = _mm256_mul_pd(row1, column[1]);
+          __m256d mul2 = _mm256_mul_pd(row2, column[2]);
+          __m256d mul3 = _mm256_mul_pd(row3, column[3]);
+
+          acc[r] = _mm256_add_pd(acc[r], mul0);
+          acc[r] = _mm256_add_pd(acc[r], mul1);
+          acc[r] = _mm256_add_pd(acc[r], mul2);
+          acc[r] = _mm256_add_pd(acc[r], mul3);
+        }
+      }
+
+      for (int r = 0; r < UNROLL; r++)
+        _mm256_store_pd(c + i + j * length + r * AVX256_QT_DOUBLE, acc[r]);
+    }
+  }
+#endif
+}
+
+void dgemm_perfect(int length, double *a, double *b, double *c) {
+#pragma omp parallel for num_threads(length / BLOCK_SIZE)
+  for (int si = 0; si < length; si += BLOCK_SIZE)
+    for (int sj = 0; sj < length; sj += BLOCK_SIZE)
+      for (int sk = 0; sk < length; sk += BLOCK_SIZE)
+        block_perfect(length, si, sj, sk, a, b, c);
 }
 
 void dgemm_avx512(int length, double *a, double *b, double *c) {
