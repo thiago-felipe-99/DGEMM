@@ -24,11 +24,11 @@ csv_2048: prepare
 
 .PHONY: csv
 csv_4096: prepare
-	python3 -u ./scripts/create_csv.py -u 8 -b 32 -m 2048 -M 4096 -s 128 -f ./out/dgemm.4096.csv
+	python3 -u ./scripts/create_csv.py -u 8 -b 32 -m 2048 -M 4096 -s 128 -P true -f ./out/dgemm.4096.csv
 
 .PHONY: csv
 csv_8192: prepare 
-	python3 -u ./scripts/create_csv.py -u 8 -b 32 -m 128 -M 8192 -s 128 -P true -f ./out/dgemm.8192.csv
+	python3 -u ./scripts/create_csv.py -u 8 -b 32 -m 4096 -M 8192 -s 128 -P true -f ./out/dgemm.8192.csv
 
 .PHONY: figs
 figs: prepare
