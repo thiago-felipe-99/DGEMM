@@ -16,15 +16,15 @@ csv_all: prepare csv_1024 csv_2048 csv_4096
 
 .PHONY: csv_1024
 csv_1024: 
-	python -u ./scripts/create_csv.py -u 8 -b 32 -o 1024 -f ./out/dgemm.1024.csv
+	python -u ./scripts/create_csv.py -u 8 -b 32 -m 32 -M 1024 -s 32 -f ./out/dgemm.1024.csv
 
 .PHONY: csv
 csv_2048: 
-	python -u ./scripts/create_csv.py -u 8 -b 32 -o 2048 -f ./out/dgemm.2048.csv
+	python -u ./scripts/create_csv.py -u 8 -b 32 -m 32 -M 2048 -s 32 -f ./out/dgemm.2048.csv
 
 .PHONY: csv
 csv_4096: 
-	python -u ./scripts/create_csv.py -u 8 -b 32 -o 4096 -f ./out/dgemm.4096.csv
+	python -u ./scripts/create_csv.py -u 8 -b 32 -m 2048 -M 4096 -s 128 -f ./out/dgemm.4096.csv
 
 .PHONY: clean
 clean:

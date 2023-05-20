@@ -23,6 +23,15 @@ DEFAULT_BLOCK_SIZE = 32
 DEFAULT_NUM_PROCESS = 1
 DEFAULT_LOOP = "32:1024:32"
 
+
+ALL_ALGS = "simple,transpose,simd_manual,simple_unroll,transpose_unroll,simd_manual_unroll,simple_blocking,transpose_blocking,simd_manual_blocking,simple_parallel,transpose_parallel,simd_manual_parallel"
+
+if AVX256_ENABLE:
+    ALL_ALGS += ",avx256,avx256_unroll,avx256_blocking,avx256_parallel"
+
+if AVX512_ENABLE:
+    ALL_ALGS += ",avx512,avx512_unroll,avx512_blocking,avx512_parallel"
+
 RANGE_ROUNDS = 5
 MAX_ROUNDS = 3
 MIN_DIFF = 1
@@ -218,14 +227,7 @@ def achar_melhor_block_size(unroll, algs):
     return max(melhores_block_size, key=melhores_block_size.get)
 
 
-def rodar_dgemm_thread(indice, num_process, unroll, block_size, loop):
-    algs = "simple,transpose,simd_manual,simple_unroll,transpose_unroll,simd_manual_unroll,simple_blocking,transpose_blocking,simd_manual_blocking,simple_parallel,transpose_parallel,simd_manual_parallel"
-
-    if AVX256_ENABLE:
-        algs += ",avx256,avx256_unroll,avx256_blocking,avx256_parallel"
-
-    if AVX512_ENABLE:
-        algs += ",avx512,avx512_unroll,avx512_blocking,avx512_parallel"
+def rodar_dgemm_thread(indice, num_process, algs, unroll, block_size, loop):
 
     if indice < num_process:
         time.sleep(indice*120)
@@ -246,8 +248,8 @@ def rodar_dgemm_thread(indice, num_process, unroll, block_size, loop):
     return result
 
 
-def rodar_todas_dgemm(unroll, block_size, loop, num_process, filename):
-    dgemms = [(i, num_process, unroll, block_size, loop)
+def rodar_todas_dgemm(algs, unroll, block_size, loop, num_process, filename):
+    dgemms = [(i, num_process, algs, unroll, block_size, loop)
               for i in range(NUM_BUILDS)]
     csvs = []
     result = {}
@@ -296,8 +298,12 @@ def main():
     parser.add_argument("-u", "--unroll", type=int, help="Especifica UNROLL")
     parser.add_argument("-b", "--block-size", type=int,
                         help="Especifica BLOCK_SIZE")
-    parser.add_argument("-o", "--limit-loop", default=1024, type=int,
-                        help="Especifica o limite do loop")
+    parser.add_argument("-m", "--loop-min", default=32, type=int,
+                        help="Especifica o limite mínimo do loop")
+    parser.add_argument("-M", "--loop-max", default=1024, type=int,
+                        help="Especifica o limite máximo do loop")
+    parser.add_argument("-s", "--loop-step", default=32, type=int,
+                        help="Especifica o passo do loop")
     parser.add_argument("-p", "--process", default=DEFAULT_NUM_PROCESS,
                         type=int, help="Quantidade de processos paralelos")
     parser.add_argument("-f", "--file",  default="./out_csv/dgemm.csv",
@@ -338,12 +344,12 @@ def main():
         block_size = achar_melhor_block_size(unroll, algs)
         log(f"Melhor BLOCK_SIZE {block_size}", INFO_MESSAGE)
 
-    loop = f"32:{arguments.limit_loop}:32"
+    loop = f"{arguments.loop_min}:{arguments.loop_max}:{arguments.loop_step}"
     num_process = arguments.process
     file = arguments.file
 
     start_time = time.time()
-    rodar_todas_dgemm(unroll, block_size, loop, num_process, file)
+    rodar_todas_dgemm(ALL_ALGS, unroll, block_size, loop, num_process, file)
     diff_time = (time.time() - start_time)*1000
 
     log(
