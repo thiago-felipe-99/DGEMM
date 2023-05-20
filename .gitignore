@@ -1,3 +1,4 @@
+*.png
 out
 out_csv
 debug_out

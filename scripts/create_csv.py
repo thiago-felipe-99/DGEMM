@@ -310,6 +310,8 @@ def main():
                         type=str, help="Caminho do arquivo csv gerado")
     parser.add_argument("-l", "--log", type=int, default=DEFAULT_LOG_LEVEL,
                         help="Especifica nível do log")
+    parser.add_argument("-P", "--only-parallel", type=bool, default=False,
+                        help="Rodar somente agoritmos com otimização de paralelismos")
 
     arguments = parser.parse_args()
 
@@ -347,9 +349,13 @@ def main():
     loop = f"{arguments.loop_min}:{arguments.loop_max}:{arguments.loop_step}"
     num_process = arguments.process
     file = arguments.file
+    if arguments.only_parallel:
+        algs = "simple_parallel,transpose_parallel,simd_manual_parallel,avx256_parallel"
+    else:
+        algs = ALL_ALGS
 
     start_time = time.time()
-    rodar_todas_dgemm(ALL_ALGS, unroll, block_size, loop, num_process, file)
+    rodar_todas_dgemm(algs, unroll, block_size, loop, num_process, file)
     diff_time = (time.time() - start_time)*1000
 
     log(
